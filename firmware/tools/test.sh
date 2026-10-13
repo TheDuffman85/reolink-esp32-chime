@@ -2,6 +2,7 @@
 set -euo pipefail
 firmware_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 python3 "$firmware_dir/test/version_test.py"
+python3 "$firmware_dir/test/package_test.py"
 test_binary="$(mktemp /tmp/reolink-protocol-test.XXXXXX)"
 link_binary="$(mktemp /tmp/reolink-link-test.XXXXXX)"
 app_binary="$(mktemp /tmp/reolink-app-test.XXXXXX)"

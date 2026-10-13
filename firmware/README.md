@@ -11,15 +11,18 @@ The target is `esp32dev`, 4 MB flash. Dependencies are pinned in `platformio.ini
 espressif32 6.9.0 (Arduino core 2.0.17) and ArduinoJson 6.21.5. Run here:
 
 ```bash
-pio run
+pio run -e esp32dev -t build_initial
 pio run --target upload --upload-port /dev/ttyUSB0
 pio device monitor --port /dev/ttyUSB0 --baud 115200
 python3 tools/package.py
 ```
 
 USB upload installs bootloader, partitions and app. Packaging generates
-`dist/firmware.bin` (OTA app only) and `dist/manifest.json` (version, SHA-256,
-image size and source hashes). `.pio/` and `dist/` are Git-ignored.
+`dist/firmware.bin` (OTA app only), `dist/firmware-initial.bin` (merged USB-install
+image) and `dist/manifest.json` (version, SHA-256 and size of both images, and
+source hashes). The `build_initial` target builds the app and merges the same
+bootloader, partition table, OTA boot data and flash settings used by PlatformIO
+USB upload. `.pio/` and `dist/` are Git-ignored.
 
 `tools/pio_version.py` defines `FIRMWARE_VERSION` from `version.json`. Builds
 never change the version. Edit the `version` field manually (`MAJOR.MINOR.PATCH`)
@@ -29,6 +32,24 @@ with the corresponding source changes. The package tool checks the image's
 embedded version before packaging it. The UI reads `REOLINK_CHIME_VERSION` from
 OTA files and compares the running version after restart. V2 compatibility
 version `00A2` is a separate RF value, not the app version.
+
+### Initial USB installation from a release
+
+Download `firmware-initial.bin` from the GitHub release. Install
+[esptool](https://docs.espressif.com/projects/esptool/en/latest/esp32/esptool/basic-commands.html)
+and flash the merged image at **address `0x0`**:
+
+```bash
+python3 -m pip install esptool
+python3 -m esptool --chip esp32 --port /dev/ttyUSB0 write-flash 0x0 firmware-initial.bin
+```
+
+Replace the port with your board's port (e.g. `COM3` on Windows). If automatic
+upload fails, hold BOOT while connecting and release when writing starts.
+This installs a blank ESP32-WROOM-32 with 4 MB flash without compiling the
+project. Flashing the merged image on an existing installation clears stored
+settings; use `firmware.bin` through Settings → Firmware for normal OTA updates.
+Do not upload the merged image through the web updater.
 
 ## GitHub releases
 
@@ -43,10 +64,10 @@ git push origin 1.0.24
 The [Release workflow](../.github/workflows/release.yml) runs on every pushed
 tag and rejects a mismatch before building. It builds `esp32dev`, runs the host
 tests and fuzz corpus, verifies the embedded version while packaging, then
-creates a GitHub release with generated notes and attaches `firmware.bin` and
-`manifest.json`. The `.bin` is for OTA updates; initial USB installation still
-requires PlatformIO upload. A failed check, build, test or packaging step prevents
-release publication.
+creates a GitHub release with generated notes and attaches `firmware.bin`,
+`firmware-initial.bin` and `manifest.json`. Use `firmware.bin` for OTA updates
+and `firmware-initial.bin` for [initial USB installation](#initial-usb-installation-from-a-release).
+A failed check, build, test or packaging step prevents release publication.
 
 ## Source modules
 

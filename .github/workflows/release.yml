@@ -45,12 +45,12 @@ jobs:
           sudo apt-get install -y --no-install-recommends g++ libssl-dev
 
       - name: Build firmware
-        run: pio run -e esp32dev
+        run: pio run -e esp32dev -t build_initial
 
       - name: Run host tests and fuzz corpus
         run: bash tools/test.sh
 
-      - name: Package OTA firmware
+      - name: Package OTA and initial USB firmware
         run: python3 tools/package.py
 
       - uses: actions/upload-artifact@v7
@@ -58,6 +58,7 @@ jobs:
           name: firmware
           path: |
             firmware/dist/firmware.bin
+            firmware/dist/firmware-initial.bin
             firmware/dist/manifest.json
           if-no-files-found: error
 
@@ -78,8 +79,14 @@ jobs:
 
       - name: Create release
         run: |
-          gh release create "$VERSION" dist/firmware.bin dist/manifest.json \
+          cat > release-notes.md <<'EOF'
+          - Upload `firmware.bin` through Settings → Firmware for an OTA update.
+          - For initial USB installation, flash `firmware-initial.bin` at address `0x0` using esptool. It includes the bootloader, partition table, OTA boot data and app; no PlatformIO build is required. Flashing this merged image clears stored settings. Do not upload it through the web updater.
+          - `manifest.json` contains the firmware version, both image SHA-256 hashes and source hashes.
+          EOF
+          printf '\n[USB flashing instructions](https://github.com/%s/blob/%s/firmware/README.md#initial-usb-installation-from-a-release)\n' "$GH_REPO" "$VERSION" >> release-notes.md
+          gh release create "$VERSION" dist/firmware.bin dist/firmware-initial.bin dist/manifest.json \
             --verify-tag \
             --title "$VERSION" \
             --generate-notes \
-            --notes "Upload firmware.bin through Settings → Firmware for an OTA update. This is an app-only image; initial USB installation requires building and uploading with PlatformIO. manifest.json contains the firmware version, image SHA-256 and source hashes."
+            --notes-file release-notes.md
