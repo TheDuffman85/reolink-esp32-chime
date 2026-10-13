@@ -1,0 +1,9 @@
+.pio/
+.vscode/
+__pycache__/
+*.pyc
+node_modules/
+firmware/dist/
+.DS_Store
+.env
+.env.*

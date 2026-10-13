@@ -1,0 +1,174 @@
+{
+  "embedded_ui_sha256": "36ba5f6f848a356ba1ebe99f6566ea769ab9fb67c4fe938f76e87a4dd5ad0c52",
+  "data": "Synthetic API fixtures; no device connection",
+  "screenshots": [
+    {
+      "file": "web-status.png",
+      "tab": "home",
+      "viewport": {
+        "width": 1100,
+        "height": 700
+      }
+    },
+    {
+      "file": "web-sound.png",
+      "tab": "sound",
+      "viewport": {
+        "width": 1100,
+        "height": 1000
+      }
+    },
+    {
+      "file": "web-sound-relay.png",
+      "tab": "sound",
+      "viewport": {
+        "width": 1100,
+        "height": 1000
+      }
+    },
+    {
+      "file": "web-setup-wifi.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 1100,
+        "height": 800
+      }
+    },
+    {
+      "file": "web-setup-pairing.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 1100,
+        "height": 800
+      }
+    },
+    {
+      "file": "web-setup-sound.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 1100,
+        "height": 800
+      }
+    },
+    {
+      "file": "web-settings.png",
+      "tab": "settings",
+      "viewport": {
+        "width": 1100,
+        "height": 1000
+      }
+    },
+    {
+      "file": "web-settings-ha.png",
+      "tab": "settings",
+      "viewport": {
+        "width": 1100,
+        "height": 1000
+      }
+    },
+    {
+      "file": "web-settings-security.png",
+      "tab": "settings",
+      "viewport": {
+        "width": 1100,
+        "height": 1000
+      }
+    },
+    {
+      "file": "web-settings-advanced.png",
+      "tab": "settings",
+      "viewport": {
+        "width": 1100,
+        "height": 1000
+      }
+    },
+    {
+      "file": "web-dialog.png",
+      "tab": "settings",
+      "viewport": {
+        "width": 1100,
+        "height": 700
+      }
+    },
+    {
+      "file": "web-maintenance.png",
+      "tab": "settings",
+      "viewport": {
+        "width": 1100,
+        "height": 1000
+      }
+    },
+    {
+      "file": "web-mobile.png",
+      "tab": "home",
+      "viewport": {
+        "width": 390,
+        "height": 1000
+      }
+    },
+    {
+      "file": "web-settings-mobile.png",
+      "tab": "settings",
+      "viewport": {
+        "width": 390,
+        "height": 1000
+      }
+    },
+    {
+      "file": "web-muted.png",
+      "tab": "home",
+      "viewport": {
+        "width": 1100,
+        "height": 700
+      }
+    },
+    {
+      "file": "web-status-light.png",
+      "tab": "home",
+      "viewport": {
+        "width": 1100,
+        "height": 700
+      }
+    },
+    {
+      "file": "web-sound-none.png",
+      "tab": "sound",
+      "viewport": {
+        "width": 1100,
+        "height": 700
+      }
+    },
+    {
+      "file": "web-update-countdown.png",
+      "tab": "settings",
+      "viewport": {
+        "width": 1100,
+        "height": 700
+      }
+    },
+    {
+      "file": "web-login.png",
+      "tab": "login",
+      "viewport": {
+        "width": 1100,
+        "height": 700
+      }
+    },
+    {
+      "file": "web-login-mobile.png",
+      "tab": "login",
+      "viewport": {
+        "width": 390,
+        "height": 760
+      }
+    }
+  ],
+  "checked_widths": [
+    390,
+    768,
+    1100
+  ],
+  "page_errors": [],
+  "unexpected_requests": [],
+  "page_horizontal_overflow": false
+}
