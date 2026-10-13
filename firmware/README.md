@@ -21,13 +21,32 @@ USB upload installs bootloader, partitions and app. Packaging generates
 `dist/firmware.bin` (OTA app only) and `dist/manifest.json` (version, SHA-256,
 image size and source hashes). `.pio/` and `dist/` are Git-ignored.
 
-`tools/pio_version.py` defines `FIRMWARE_VERSION` from `version.json`. A SHA-256
-change in `platformio.ini`, `include/*.h` or `src/*.cpp` bumps the patch version;
-unchanged inputs keep it. `python3 tools/version.py minor` or `major` bumps that
-part and records the current source hash. The package tool checks the image's
+`tools/pio_version.py` defines `FIRMWARE_VERSION` from `version.json`. Builds
+never change the version. Edit the `version` field manually (`MAJOR.MINOR.PATCH`)
+or run `python3 tools/version.py patch`, `minor` or `major` to explicitly bump
+that part (minor/major bumps reset the lower parts to zero). Commit the version
+with the corresponding source changes. The package tool checks the image's
 embedded version before packaging it. The UI reads `REOLINK_CHIME_VERSION` from
 OTA files and compares the running version after restart. V2 compatibility
 version `00A2` is a separate RF value, not the app version.
+
+## GitHub releases
+
+From the repository root, push a tag exactly matching the committed version in
+`firmware/version.json`, without a `v` prefix. For example, for version `1.0.24`:
+
+```bash
+git tag 1.0.24
+git push origin 1.0.24
+```
+
+The [Release workflow](../.github/workflows/release.yml) runs on every pushed
+tag and rejects a mismatch before building. It builds `esp32dev`, runs the host
+tests and fuzz corpus, verifies the embedded version while packaging, then
+creates a GitHub release with generated notes and attaches `firmware.bin` and
+`manifest.json`. The `.bin` is for OTA updates; initial USB installation still
+requires PlatformIO upload. A failed check, build, test or packaging step prevents
+release publication.
 
 ## Source modules
 

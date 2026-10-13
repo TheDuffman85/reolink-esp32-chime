@@ -303,11 +303,15 @@ operation and rejoin. Use USB for recovery from an interrupted update.
 
 ![Update restart screen](firmware/docs/images/web-update-countdown.png)
 
-Source changes automatically bump the patch version at build time. Credentials,
-pairing and GPIO settings persist across normal updates. Build caches and
-generated packages are excluded from Git; release packages can be created
-from the checked-in source. Do not upload a bootloader, partition table or
-merged image through the web updater.
+Set the firmware version manually in `firmware/version.json`; builds keep it
+unchanged. Push a tag exactly matching that version (e.g. `1.0.24`, without a
+`v` prefix) to build, test and publish a GitHub release containing the OTA image
+and manifest. A mismatched tag fails the workflow. See the
+[release instructions](firmware/README.md#github-releases).
+
+Credentials, pairing and GPIO settings persist across normal updates. Build
+caches and generated packages are excluded from Git. Do not upload a bootloader,
+partition table or merged image through the web updater.
 
 ## Physical controls and recovery
 

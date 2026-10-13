@@ -1,7 +1,7 @@
 #pragma once
 // Firmware release (semantic version). The build defines FIRMWARE_VERSION
-// from version.json (tools/pio_version.py), bumping the patch number when the
-// sources changed; see tools/version.py for minor/major bumps.
+// from the manually maintained version.json (tools/pio_version.py).
+// See tools/version.py for explicit patch/minor/major bumps.
 #ifndef FIRMWARE_VERSION
 #define FIRMWARE_VERSION "0.0.0-dev"
 #endif

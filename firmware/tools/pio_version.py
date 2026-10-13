@@ -1,5 +1,5 @@
 # PlatformIO pre-build script: defines FIRMWARE_VERSION from version.json,
-# bumping the patch number when the firmware sources changed.
+# without changing the manually configured version.
 Import("env")  # noqa: F821 (provided by SCons)
 import sys
 from pathlib import Path

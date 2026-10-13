@@ -1,0 +1,85 @@
+# Push a tag exactly matching firmware/version.json (e.g. 1.0.24).
+name: Release
+
+on:
+  push:
+    tags:
+      - '**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    defaults:
+      run:
+        working-directory: firmware
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Check tag matches firmware version
+        id: version
+        run: |
+          version=$(python3 tools/version.py)
+          if [ "$GITHUB_REF_NAME" != "$version" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match firmware/version.json version $version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Install build and test dependencies
+        run: |
+          python3 -m pip install platformio==6.2.0
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends g++ libssl-dev
+
+      - name: Build firmware
+        run: pio run -e esp32dev
+
+      - name: Run host tests and fuzz corpus
+        run: bash tools/test.sh
+
+      - name: Package OTA firmware
+        run: python3 tools/package.py
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: firmware
+          path: |
+            firmware/dist/firmware.bin
+            firmware/dist/manifest.json
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: firmware
+          path: dist
+
+      - name: Create release
+        run: |
+          gh release create "$VERSION" dist/firmware.bin dist/manifest.json \
+            --verify-tag \
+            --title "$VERSION" \
+            --generate-notes \
+            --notes "Upload firmware.bin through Settings → Firmware for an OTA update. This is an app-only image; initial USB installation requires building and uploading with PlatformIO. manifest.json contains the firmware version, image SHA-256 and source hashes."
