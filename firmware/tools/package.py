@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Package firmware images, hashes and a matching GitHub Pages USB installer."""
 import hashlib
-import html
 import json
 import os
 from pathlib import Path
 import re
 import shutil
+
+from build_installer import build_installer
 
 root = Path(__file__).resolve().parents[1]
 image = root / ".pio/build/esp32dev/firmware.bin"
@@ -52,37 +53,6 @@ manifest = {
 }
 (dest / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
-# Keep the web manifest separate from the release hash/metadata manifest.
-# Version + content hash in URLs prevents a cached page from flashing another build.
-web = dest / "web"
-if web.exists():
-    shutil.rmtree(web)
-web.mkdir()
-web_source = root.parent / "web"
-suffix = f"{version}-{manifest['initial_image']['image_sha256'][:12]}"
-web_image = f"firmware-initial-{suffix}.bin"
-web_manifest = f"install-{suffix}.json"
-shutil.copyfile(initial, web / web_image)
-install_manifest = {
-    "name": "Reolink ESP32 Chime",
-    "version": version,
-    "builds": [{
-        "chipFamily": "ESP32",
-        "parts": [{"path": web_image, "offset": 0}],
-    }],
-}
-(web / web_manifest).write_text(json.dumps(install_manifest, indent=2) + "\n")
-page = (web_source / "index.html").read_text()
-for placeholder, value in {
-    "__VERSION__": version,
-    "__REPOSITORY_URL__": f"https://github.com/{repository}",
-    "__INSTALL_MANIFEST__": web_manifest,
-    "__INITIAL_IMAGE__": web_image,
-}.items():
-    page = page.replace(placeholder, html.escape(value, quote=True))
-(web / "index.html").write_text(page)
-for asset in ("style.css", "installer.js"):
-    shutil.copyfile(web_source / asset, web / asset)
-(web / ".nojekyll").touch()
+web = build_installer(dest, repository, version)
 print(f"Packaged version {version}: {manifest['image_bytes']} app bytes and {initial.stat().st_size} initial USB bytes")
 print(f"Packaged browser installer: {web}")

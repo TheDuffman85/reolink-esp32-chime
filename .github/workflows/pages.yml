@@ -1,0 +1,78 @@
+name: USB installer
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - web/**
+      - firmware/tools/build_installer.py
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Existing release tag (leave empty for the latest release)'
+        type: string
+        required: false
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Download and verify published firmware
+        run: |
+          release_tag="$RELEASE_TAG"
+          if [ -z "$release_tag" ]; then
+            release_tag=$(gh release view --json tagName --jq .tagName)
+          fi
+          if [[ ! "$release_tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::release tag must be MAJOR.MINOR.PATCH"
+            exit 1
+          fi
+          gh release download "$release_tag" --dir dist \
+            --pattern firmware-initial.bin --pattern manifest.json
+          python3 firmware/tools/build_installer.py dist --expected-version "$release_tag"
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist/web
+
+  deploy:
+    needs: prepare
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+
+      - name: Deploy USB installer
+        id: deployment
+        uses: actions/deploy-pages@v4

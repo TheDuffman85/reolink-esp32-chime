@@ -23,6 +23,7 @@ class PackageTest(unittest.TestCase):
         self.root.mkdir()
         (self.root / "tools").mkdir()
         shutil.copyfile(TOOLS / "package.py", self.root / "tools/package.py")
+        shutil.copyfile(TOOLS / "build_installer.py", self.root / "tools/build_installer.py")
         shutil.copytree(WEB, self.root.parent / "web")
         (self.root / "version.json").write_text('{"version": "1.4.2"}\n')
         (self.root / "platformio.ini").write_text("[env:esp32dev]\n")
@@ -90,6 +91,34 @@ class PackageTest(unittest.TestCase):
         self.assertFalse(old_manifest.exists())
         self.assertFalse(old_image.exists())
         self.assertEqual(len(list(web.glob("*.bin"))), 1)
+
+    def test_builds_from_release_assets_without_a_build_cache(self):
+        self.assertEqual(self.package().returncode, 0)
+        shutil.rmtree(self.root / ".pio")
+        shutil.rmtree(self.root / "dist/web")
+        result = subprocess.run(
+            [sys.executable, str(self.root / "tools/build_installer.py"),
+             str(self.root / "dist"), "--expected-version", "1.4.2"],
+            capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue((self.root / "dist/web/index.html").is_file())
+
+    def test_release_installer_rejects_wrong_tag_and_corrupt_image(self):
+        self.assertEqual(self.package().returncode, 0)
+        shutil.rmtree(self.root / "dist/web")
+        command = [sys.executable, str(self.root / "tools/build_installer.py"),
+                   str(self.root / "dist")]
+        result = subprocess.run(command + ["--expected-version", "1.4.3"],
+                                capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("tag does not match", result.stderr)
+        self.assertFalse((self.root / "dist/web").exists())
+        (self.root / "dist/firmware-initial.bin").write_bytes(b"corrupt image")
+        result = subprocess.run(command, capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("does not match the release manifest", result.stderr)
+        self.assertFalse((self.root / "dist/web").exists())
 
     def test_missing_image_fails_before_exporting(self):
         for image in (self.app, self.initial):

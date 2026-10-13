@@ -85,18 +85,26 @@ A failed check, build, test or packaging step prevents release publication.
 
 Before the first deployment, open the repository's **Settings → Pages** and set
 **Build and deployment → Source** to **GitHub Actions**. In **Settings →
-Environments → github-pages**, ensure deployment branch/tag rules allow the
-release tags (for example, a tag rule of `*`). If Pages created a rule allowing
-only the default branch, tags must be allowed as well.
+Environments → github-pages**, allow deployments from `main`. The installer
+workflow runs from the default branch, including after tagged releases; release
+tags do not need deployment access.
 
-After a successful release, the workflow's `pages` job deploys the packaged
-`dist/web/` using `actions/configure-pages`, `actions/upload-pages-artifact` and
+After a successful Release workflow run, GitHub triggers the
+[USB installer workflow](../.github/workflows/pages.yml) on the default branch.
+It downloads the latest release's initial image and hash manifest, verifies their version, size and
+SHA-256, then generates and deploys `dist/web/` using
+`actions/configure-pages`, `actions/upload-pages-artifact` and
 `actions/deploy-pages`. It needs `pages: write` and `id-token: write`; those
 permissions are scoped to that job. A Pages failure leaves the published
-release available for manual installation. Re-run the failed Pages job after
-fixing the repository settings. The installer updates on releases, not on
-ordinary branch pushes. The first deployment requires a new release tag whose
-commit contains this workflow and the installer sources.
+release available for manual installation. Re-run the failed installer job after
+fixing the repository settings.
+
+The installer also deploys when its page, builder or workflow changes on
+`main`, using the latest published firmware without compiling or creating a
+new release. For the first deployment or a retry, open **Actions → USB
+installer → Run workflow** on `main`. Leave `release_tag` empty to use the
+latest release, or enter an existing release tag. Ordinary firmware source
+changes do not update the hosted firmware until a release is published.
 
 The source page, styles and loader live in `../web/`. Packaging generates a
 separate ESP Web Tools manifest for chip family `ESP32` with the initial image
