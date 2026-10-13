@@ -2,6 +2,7 @@
 """Check release packaging and rejection of missing or stale build artifacts."""
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -11,15 +12,18 @@ import unittest
 
 
 TOOLS = Path(__file__).resolve().parents[1] / "tools"
+WEB = TOOLS.parent.parent / "web"
 
 
 class PackageTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name) / "firmware"
+        self.root.mkdir()
         (self.root / "tools").mkdir()
         shutil.copyfile(TOOLS / "package.py", self.root / "tools/package.py")
+        shutil.copytree(WEB, self.root.parent / "web")
         (self.root / "version.json").write_text('{"version": "1.4.2"}\n')
         (self.root / "platformio.ini").write_text("[env:esp32dev]\n")
         build = self.root / ".pio/build/esp32dev"
@@ -33,6 +37,7 @@ class PackageTest(unittest.TestCase):
         return subprocess.run(
             [sys.executable, str(self.root / "tools/package.py")],
             capture_output=True, text=True,
+            env={**os.environ, "GITHUB_REPOSITORY": "example/chime"},
         )
 
     def test_packages_both_images_with_hashes_and_flash_address(self):
@@ -50,6 +55,41 @@ class PackageTest(unittest.TestCase):
         self.assertEqual(manifest["initial_image"]["flash_offset"], "0x0")
         self.assertEqual(manifest["source_sha256"]["platformio.ini"],
                          hashlib.sha256((self.root / "platformio.ini").read_bytes()).hexdigest())
+
+    def test_installer_uses_matching_initial_image_at_zero_on_project_pages(self):
+        result = self.package()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        web = self.root / "dist/web"
+        page = (web / "index.html").read_text()
+        self.assertNotIn("__VERSION__", page)
+        self.assertNotIn("__REPOSITORY_URL__", page)
+        self.assertIn("https://github.com/example/chime/releases/tag/1.4.2", page)
+        manifests = list(web.glob("install-*.json"))
+        self.assertEqual(len(manifests), 1)
+        self.assertIn(f'manifest="{manifests[0].name}"', page)
+        install = json.loads(manifests[0].read_text())
+        self.assertEqual(install["version"], "1.4.2")
+        self.assertEqual(len(install["builds"]), 1)
+        self.assertEqual(install["builds"][0]["chipFamily"], "ESP32")
+        parts = install["builds"][0]["parts"]
+        self.assertEqual(len(parts), 1)
+        self.assertEqual(parts[0]["offset"], 0)
+        self.assertEqual((web / parts[0]["path"]).read_bytes(), self.initial.read_bytes())
+        self.assertIn(hashlib.sha256(self.initial.read_bytes()).hexdigest()[:12], parts[0]["path"])
+        for asset in ("style.css", "installer.js", ".nojekyll"):
+            self.assertTrue((web / asset).is_file())
+
+    def test_repackaging_replaces_old_installer_image_and_manifest(self):
+        self.assertEqual(self.package().returncode, 0)
+        web = self.root / "dist/web"
+        old_manifest = next(web.glob("install-*.json"))
+        old_image = next(web.glob("*.bin"))
+        self.app.write_bytes(self.app.read_bytes() + b"new build")
+        self.initial.write_bytes(b"\xff" * 0x10000 + self.app.read_bytes())
+        self.assertEqual(self.package().returncode, 0)
+        self.assertFalse(old_manifest.exists())
+        self.assertFalse(old_image.exists())
+        self.assertEqual(len(list(web.glob("*.bin"))), 1)
 
     def test_missing_image_fails_before_exporting(self):
         for image in (self.app, self.initial):

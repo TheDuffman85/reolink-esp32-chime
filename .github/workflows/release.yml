@@ -56,10 +56,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: firmware
-          path: |
-            firmware/dist/firmware.bin
-            firmware/dist/firmware-initial.bin
-            firmware/dist/manifest.json
+          path: firmware/dist/
           if-no-files-found: error
 
   release:
@@ -85,8 +82,34 @@ jobs:
           - `manifest.json` contains the firmware version, both image SHA-256 hashes and source hashes.
           EOF
           printf '\n[USB flashing instructions](https://github.com/%s/blob/%s/firmware/README.md#initial-usb-installation-from-a-release)\n' "$GH_REPO" "$VERSION" >> release-notes.md
+          printf '\n[Install over USB from your browser](https://%s.github.io/%s/) (clears saved settings and pairing; available after the Pages deployment finishes).\n' "${GH_REPO%%/*}" "${GH_REPO#*/}" >> release-notes.md
           gh release create "$VERSION" dist/firmware.bin dist/firmware-initial.bin dist/manifest.json \
             --verify-tag \
             --title "$VERSION" \
             --generate-notes \
             --notes-file release-notes.md
+
+  pages:
+    needs: release
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: firmware
+          path: dist
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist/web
+
+      - name: Deploy USB installer
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Install Reolink ESP32 Chime firmware over USB directly from your browser.">
+    <meta name="color-scheme" content="light dark">
+    <title>Install · Reolink ESP32 Chime</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="style.css">
+    <script type="module" src="installer.js"></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <a class="project" href="__REPOSITORY_URL__">Reolink ESP32 Chime <span aria-hidden="true">↗</span></a>
+        <h1>USB firmware installer</h1>
+      </header>
+
+      <section class="install-card" aria-labelledby="install-heading">
+        <div class="release"><span class="dot" aria-hidden="true"></span> Release __VERSION__</div>
+        <h2 id="install-heading">Install Reolink ESP32 Chime</h2>
+        <p>For <strong>ESP32-WROOM-32</strong> development boards with <strong>4 MB flash</strong>. ESP32-C3, S2 and S3 boards are not supported by this firmware.</p>
+        <aside class="warning">
+          <strong>Installation clears saved settings and pairing.</strong>
+          <p>Use this installer for first setup or USB recovery. To keep your settings during a normal update, upload <code>firmware.bin</code> in the chime’s Settings → Firmware page.</p>
+        </aside>
+        <p id="installer-status" role="status">Loading the USB installer…</p>
+        <esp-web-install-button manifest="__INSTALL_MANIFEST__" hidden>
+          <button slot="activate" type="button">Connect to ESP32</button>
+          <span slot="unsupported">Open this page in desktop Chrome or Edge to install over USB.</span>
+          <span slot="not-allowed">Open this installer over HTTPS, or use localhost for a local preview.</span>
+        </esp-web-install-button>
+        <noscript><p>Enable JavaScript to install from your browser, or use the manual USB instructions below.</p></noscript>
+        <p class="small">Choose Install in the connection dialog. Keep the USB cable connected and this page open until installation finishes. The dialog also offers Logs &amp; Console.</p>
+        <div class="links">
+          <a href="__REPOSITORY_URL__/releases/tag/__VERSION__">Release notes</a>
+          <a href="__REPOSITORY_URL__/blob/__VERSION__/firmware/README.md#initial-usb-installation-from-a-release">Manual USB instructions</a>
+          <a href="__INITIAL_IMAGE__" download>Download USB image</a>
+        </div>
+      </section>
+
+      <section aria-labelledby="before-heading">
+        <h2 id="before-heading">Before you connect</h2>
+        <ol>
+          <li>Open this page in <strong>desktop Chrome or Edge</strong>.</li>
+          <li>Connect the ESP32 with a <strong>USB data cable</strong>. Close any serial monitor or other application using its port.</li>
+          <li>Click <strong>Connect to ESP32</strong> and choose the board’s serial port.</li>
+        </ol>
+        <details>
+          <summary>Can’t connect to the board?</summary>
+          <p>If the port is missing, try another data cable or USB port and install the driver for your board’s USB serial adapter (often CP210x or CH340). On Linux, check your serial-port permissions.</p>
+          <p>If connection stalls, hold <strong>BOOT</strong> while connecting. If needed, press and release <strong>EN/RESET</strong> while holding BOOT. Release BOOT when writing starts.</p>
+          <p>Use the manual USB instructions above if your browser does not support Web Serial.</p>
+        </details>
+      </section>
+
+      <section aria-labelledby="after-heading">
+        <h2 id="after-heading">After installation</h2>
+        <ol>
+          <li>Join the ESP32’s <strong>Reolink-Chime-xxxxxx</strong> WiFi hotspot.</li>
+          <li>Open <a href="http://192.168.4.1/">http://192.168.4.1/</a>, then use Setup to connect to your <strong>2.4 GHz WiFi</strong>.</li>
+          <li>Connect the CC1101 radio according to the <a href="__REPOSITORY_URL__/blob/__VERSION__/firmware/WIRING.md">wiring guide</a>, then follow the <a href="__REPOSITORY_URL__/blob/__VERSION__/README.md#pairing-with-the-doorbell">doorbell pairing instructions</a>.</li>
+        </ol>
+        <p class="small">WiFi setup takes place on the chime’s own web page after flashing.</p>
+      </section>
+
+      <footer>Powered by <a href="https://esphome.github.io/esp-web-tools/">ESP Web Tools</a>. Firmware is written locally from your browser to the connected board.</footer>
+    </main>
+  </body>
+</html>

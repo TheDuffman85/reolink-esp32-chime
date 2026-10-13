@@ -103,9 +103,19 @@ module-specific circuit in [WIRING.md](firmware/WIRING.md).
 
 ## Build and first installation
 
-For installation without compiling, download `firmware-initial.bin` from a
-GitHub release and [flash it over USB at address `0x0`](firmware/README.md#initial-usb-installation-from-a-release)
-using esptool. It includes the bootloader, partition table, OTA boot data and app.
+For installation without compiling, [install over USB from your browser](https://TheDuffman85.github.io/reolink-esp32-chime/).
+Open the installer in desktop Chrome or Edge, connect an ESP32-WROOM-32 board
+with 4 MB flash using a USB data cable, click **Connect to ESP32**, choose its
+serial port, then choose Install. **USB installation clears saved settings and
+pairing**; use the existing Settings → Firmware OTA upload for normal updates.
+After flashing, follow [WiFi setup](#wifi-setup) below.
+
+[![Install firmware over USB](firmware/docs/images/install-button.svg)](https://TheDuffman85.github.io/reolink-esp32-chime/)
+
+Alternatively, download `firmware-initial.bin` from a GitHub release and
+[flash it over USB at address `0x0`](firmware/README.md#initial-usb-installation-from-a-release)
+using esptool. Both methods install the bootloader, partition table, OTA boot
+data and app.
 
 To build and upload from source:
 
@@ -302,8 +312,9 @@ pio run -e esp32dev -t build_initial
 python3 tools/package.py
 ```
 
-This generates `dist/firmware.bin`, `dist/firmware-initial.bin` and a version/hash
-manifest. Open Settings → Firmware and upload the **app-only** `firmware.bin`.
+This generates `dist/firmware.bin`, `dist/firmware-initial.bin`, a version/hash
+manifest and the matching browser installer in `dist/web/`. Open Settings →
+Firmware and upload the **app-only** `firmware.bin`.
 RX/playback pause during writing;
 the device restarts and the UI waits for it to return. Failed uploads resume
 operation and rejoin. Use USB for recovery from an interrupted update.
@@ -313,7 +324,8 @@ operation and rejoin. Use USB for recovery from an interrupted update.
 Set the firmware version manually in `firmware/version.json`; builds keep it
 unchanged. Push a tag exactly matching that version (e.g. `1.0.24`, without a
 `v` prefix) to build, test and publish a GitHub release containing the OTA image,
-initial USB-install image and manifest. A mismatched tag fails the workflow. See the
+initial USB-install image and manifest, then deploy the browser installer to
+GitHub Pages. A mismatched tag fails the workflow. See the
 [release instructions](firmware/README.md#github-releases).
 
 Credentials, pairing and GPIO settings persist across normal updates. Build

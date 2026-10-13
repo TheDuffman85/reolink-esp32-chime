@@ -19,8 +19,9 @@ python3 tools/package.py
 
 USB upload installs bootloader, partitions and app. Packaging generates
 `dist/firmware.bin` (OTA app only), `dist/firmware-initial.bin` (merged USB-install
-image) and `dist/manifest.json` (version, SHA-256 and size of both images, and
-source hashes). The `build_initial` target builds the app and merges the same
+image), `dist/manifest.json` (version, SHA-256 and size of both images, and
+source hashes), and `dist/web/` (the matching static browser installer). The
+`build_initial` target builds the app and merges the same
 bootloader, partition table, OTA boot data and flash settings used by PlatformIO
 USB upload. `.pio/` and `dist/` are Git-ignored.
 
@@ -34,6 +35,17 @@ OTA files and compares the running version after restart. V2 compatibility
 version `00A2` is a separate RF value, not the app version.
 
 ### Initial USB installation from a release
+
+The easiest option is the [browser USB installer](https://TheDuffman85.github.io/reolink-esp32-chime/).
+Use desktop Chrome or Edge, connect the board with a USB data cable, click
+**Connect to ESP32**, select the serial port, then choose Install. Close other
+serial monitors first. It flashes the merged initial image at `0x0` and clears
+saved settings and pairing. The installer also provides Logs & Console.
+After installation, join `Reolink-Chime-xxxxxx` and open `http://192.168.4.1/`
+to configure 2.4 GHz WiFi. WiFi provisioning inside the USB installer is not
+implemented; configuration uses the existing hotspot flow.
+
+For manual USB installation:
 
 Download `firmware-initial.bin` from the GitHub release. Install
 [esptool](https://docs.espressif.com/projects/esptool/en/latest/esp32/esptool/basic-commands.html)
@@ -68,6 +80,49 @@ creates a GitHub release with generated notes and attaches `firmware.bin`,
 `firmware-initial.bin` and `manifest.json`. Use `firmware.bin` for OTA updates
 and `firmware-initial.bin` for [initial USB installation](#initial-usb-installation-from-a-release).
 A failed check, build, test or packaging step prevents release publication.
+
+### GitHub Pages browser installer
+
+Before the first deployment, open the repository's **Settings → Pages** and set
+**Build and deployment → Source** to **GitHub Actions**. In **Settings →
+Environments → github-pages**, ensure deployment branch/tag rules allow the
+release tags (for example, a tag rule of `*`). If Pages created a rule allowing
+only the default branch, tags must be allowed as well.
+
+After a successful release, the workflow's `pages` job deploys the packaged
+`dist/web/` using `actions/configure-pages`, `actions/upload-pages-artifact` and
+`actions/deploy-pages`. It needs `pages: write` and `id-token: write`; those
+permissions are scoped to that job. A Pages failure leaves the published
+release available for manual installation. Re-run the failed Pages job after
+fixing the repository settings. The installer updates on releases, not on
+ordinary branch pushes. The first deployment requires a new release tag whose
+commit contains this workflow and the installer sources.
+
+The source page, styles and loader live in `../web/`. Packaging generates a
+separate ESP Web Tools manifest for chip family `ESP32` with the initial image
+at numeric offset `0`. Image and manifest filenames contain the version and
+image hash to prevent cached pages from selecting another build. They are
+served alongside the page on Pages, so firmware fetches do not need CORS or the
+GitHub Releases API. ESP Web Tools is pinned to `10.1.0` and loaded from unpkg;
+the page offers manual installation instructions if that download fails.
+
+Packaging uses `GITHUB_REPOSITORY` for repository links in Actions, defaulting
+to `TheDuffman85/reolink-esp32-chime` locally. Forks should update the browser
+installer links in both READMEs. Release notes link to the standard
+`https://<owner>.github.io/<repository>/` address; update that link if using a
+custom Pages domain.
+
+To preview the packaged installer locally, build and package as above, then
+run from `firmware/`:
+
+```bash
+python3 -m http.server 8000 --bind 127.0.0.1 --directory dist/web
+```
+
+Open `http://localhost:8000/` in Chrome or Edge. HTTPS is required when hosted;
+localhost is also allowed. `file://` previews are not supported. Verifying an
+actual install requires an attached ESP32-WROOM-32 board; use a spare board or
+expect saved settings and pairing to be cleared.
 
 ## Source modules
 
