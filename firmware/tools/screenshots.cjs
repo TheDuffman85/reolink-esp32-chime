@@ -231,6 +231,12 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
       await page.locator('#cfgSetupVisible').check();
       await page.waitForFunction(()=>S.setup_visible===true&&!document.getElementById('cfgSetupVisible').disabled);
     };
+    // Finish closes Setup; reopen it on the sound step to change choices again.
+    const reopenSetup = async () => {
+      assert.equal(await page.evaluate(()=>activeTab),'home');
+      await enableSetup();
+      await page.evaluate(async()=>{await loadSettings();await refresh();wizStep=2;show('setup');});
+    };
     const select = async tab => {
       if(tab==='setup')await enableSetup();
       await page.locator(`#nav [data-tab="${tab}"]`).click();
@@ -405,6 +411,18 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     await page.evaluate(async()=>{await refresh();await loadSettings();render()});
     assert.equal(await page.evaluate(()=>wizardSoundBody().chime.pattern),4);
     assert.match(await page.locator('#melodies2 .choice.on b').textContent(),/Insistent/);
+    // Phones pick the ten patterns from a dropdown with a play button.
+    await page.setViewportSize({ width: 390, height: 900 });
+    assert.equal(await page.locator('#melodies2 .choice:visible').count(),0);
+    assert.equal(await page.locator('#melodies2 select').inputValue(),'4');
+    assert.equal(await page.locator('#melodies2 .pickm small').textContent(),'Five quick strikes');
+    await page.locator('#melodies2 select').selectOption('1');
+    assert.match(await page.locator('#melodies2 .choice.on b').textContent(),/Double/);
+    assert.equal(await page.evaluate(()=>wizardSoundBody().chime.pattern),1);
+    await page.waitForFunction(()=>!wizWireBusy&&wizWireOk);
+    await Promise.all([page.waitForResponse(r=>r.url().endsWith('/api/gong/test')),page.locator('#melodies2 [data-mplay]').click()]);
+    assert.equal(previews.at(-1).pattern,1);
+    await page.setViewportSize({ width: 1100, height: 1000 });
     await page.locator('#melodies2 .choice[data-i="0"]').click();
     await page.waitForFunction(()=>!wizWireBusy&&wizWireOk);
 
@@ -436,8 +454,7 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     assert.equal(await page.locator("#setupTab").isVisible(),false);
     assert.equal(gong.type, 0); assert.equal(gong.audio_output, 1);
     assert.match(await page.locator('#doneSummary').textContent(), /Audio · DAC/);
-    await page.locator('#dBack').click();
-    if (await page.locator('#wiz3').isVisible()) await page.locator('#wizAuthBack').click();
+    await reopenSetup();
     await page.waitForFunction(() => !wizWireBusy && wizWireOk);
     assert.deepEqual(await page.locator('#wizAudioPin option').evaluateAll(options => options.map(o => o.value)), ['25', '26']);
     await page.locator('#wizAudioPin').selectOption('26');
@@ -463,10 +480,10 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     assert.equal(savedPinMap.audio, 26); assert.equal(savedPinMap.relay, -1);
     assert.equal(pinMap.audio, 26); assert.equal(pinMap.relay, -1);
     assert.equal(await page.locator('#waitDlg').evaluate(dialog => dialog.open), false);
-    assert.equal(await page.locator('#doneTitle').textContent(), 'All set');
-    assert.equal(await page.locator('#dTest').isDisabled(), false);
-    await capture('web-setup-complete.png', 'setup', 1100, 850);
-    await capture('ui-complete-mobile.png', 'setup', 390, 900, undefined, true);
+    assert.equal(await page.evaluate(()=>activeTab),'home');
+    assert.equal(await page.locator('#toast').textContent(),'Setup complete');
+    await capture('web-setup-complete.png', 'home', 1100, 850);
+    await capture('ui-complete-mobile.png', 'home', 390, 900, undefined, true);
     Object.assign(pinMap, defaultPinMap); Object.assign(savedPinMap, defaultPinMap);
     gong.type = 0; gong.audio_output = 1;
     await page.evaluate(async () => { await loadSettings(); });
@@ -552,10 +569,16 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     await page.locator('#wizAuthSkip').click();
     assert.equal(authSaves.length,authCount);
     assert.match(await page.locator('#doneSummary').textContent(),/Sign-inOff/);
+    status.ap_active=true;
     await page.locator('#dHome').click();
-    await page.waitForFunction(()=>wizSetupSaved);
+    // A still-running setup hotspot offers a restart once Setup has closed.
+    await page.locator('#dlg[open]').waitFor();
+    assert.equal(await page.locator('#dlgOk').textContent(),'Restart now');
+    await page.locator('#dlgCancel').click();
+    status.ap_active=false;
+    assert.equal(await page.evaluate(()=>wizSetupSaved),true);
     assert.equal(authSaves.length,authCount);assert.equal(status.auth_enabled,false);
-    await page.locator('#dBack').click();
+    await reopenSetup();
     await page.waitForFunction(()=>!wizWireBusy&&wizWireOk);
     await page.locator('#sNext').click();
     await page.locator('#wizAuthOn').check();
@@ -591,7 +614,7 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     assert.equal(await page.locator('#wizAuthPass').inputValue(),'');
     assert.equal(await page.locator('#wizAuthConfirm').inputValue(),'');
     // Keeping a saved password needs no new password, and Skip preserves auth.
-    await page.locator('#dBack').click();
+    await reopenSetup();
     await page.waitForFunction(()=>!wizWireBusy&&wizWireOk);
     await page.locator('#sNext').click();
     assert.equal(await page.locator('#wizAuthOn').isChecked(),true);
@@ -605,7 +628,7 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     assert.equal(authSaves.length,authCount+1);
     assert.equal(status.auth_enabled,true);
     // Explicitly choosing off is also saved only on Finish.
-    await page.locator('#dBack').click();
+    await reopenSetup();
     await page.waitForFunction(()=>!wizWireBusy&&wizWireOk);
     await page.locator('#sNext').click();
     await page.locator('#wizAuthOn').uncheck();
@@ -675,7 +698,8 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     await capture('ui-setup-extra-relay-mobile.png', 'setup', 390, 900, undefined, true);
     await page.locator('#wizExtraRelay').uncheck();
     await page.waitForFunction(()=>!wizWireBusy&&wizWireOk);
-    await Promise.all([page.waitForResponse(r=>r.url().endsWith('/api/gong/test')),page.locator('#melodies2 button[data-play="0"]').click()]);
+    assert.equal(await page.locator('#melodies2 select').inputValue(),'0');
+    await Promise.all([page.waitForResponse(r=>r.url().endsWith('/api/gong/test')),page.locator('#melodies2 [data-mplay]').click()]);
     assert.equal(settings.relay,true);assert.equal(previews.at(-1).extra_relay,false);
 
     settings.relay=false;
@@ -765,10 +789,9 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     await page.waitForFunction(()=>wizSetupSaved&&S.setup_required===false);
     assert.equal(status.setup_visible,false);
     assert.deepEqual(await page.locator('#nav button:visible').evaluateAll(buttons=>buttons.map(b=>b.dataset.tab)),['home','sound','settings']);
-    await capture('ui-initial-complete-desktop.png','setup',1100,850,undefined,true);
-    await capture('ui-initial-complete-mobile.png','setup',390,900,undefined,true);
-    await page.locator('#dHome').click();
     assert.equal(await page.evaluate(()=>activeTab),'home');
+    await capture('ui-initial-complete-desktop.png','home',1100,850,undefined,true);
+    await capture('ui-initial-complete-mobile.png','home',390,900,undefined,true);
     await page.reload();await page.waitForFunction(()=>S&&P&&activeTab==='home');await stabilise();
     await enableSetup();await select('sound');
     assert.equal(await page.evaluate(()=>activeTab),'sound');

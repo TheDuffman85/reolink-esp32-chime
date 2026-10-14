@@ -44,9 +44,11 @@ button:hover{border-color:var(--accent)}button:disabled{opacity:.5;cursor:defaul
 .danger{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 45%,var(--line))}.ghost{background:none}.small{padding:6px 12px;font-size:.85rem}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.spacer{flex:1}
 .btnbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:flex-end;margin-top:16px}.btnbar .left{margin-right:auto}
-@media (max-width:479px){.btnbar{gap:8px}.btnbar button{padding:10px 12px;white-space:nowrap}.btnbar button svg{display:none}.btnbar.wiz{flex-wrap:nowrap}.btnbar.wiz.authbar{display:grid;grid-template-columns:auto 1fr}.authbar .left{margin-right:0}.authbar button:last-child{grid-column:1/-1}}
+@media (max-width:479px){.btnbar{gap:8px}.btnbar button{padding:10px 12px;white-space:nowrap}.btnbar button svg{display:none}.btnbar.wiz{flex-wrap:nowrap}.btnbar.wiz button:last-child{flex:1}.btnbar.wiz.authbar{display:grid;grid-template-columns:auto 1fr}.authbar .left{margin-right:0}.authbar button:last-child{grid-column:1/-1}.stepact button{flex:1}}
+.btnbar.wiz{border-top:1px solid var(--line);padding-top:16px;margin-top:20px}.btnbar.wiz button{min-width:96px}.stepact{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}.stepact .sub{margin:0;flex:1 1 200px}
 label.field,div.field{display:block;margin:12px 0}label.field>span,div.field>span{display:block;font-size:.85rem;color:var(--muted);margin-bottom:6px}
 input,select{font:inherit;width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:var(--text)}
+select{appearance:none;-webkit-appearance:none;padding-right:42px;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%230ea5e9' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-size:20px}select:disabled{cursor:default;opacity:.6}
 input:focus,select:focus{outline:2px solid color-mix(in srgb,var(--accent) 60%,transparent);border-color:var(--accent)}
 input[type=range]{padding:0;accent-color:var(--accent);background:none;border:0}
 .switch{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--line)}.switch:first-of-type{border-top:0}
@@ -55,7 +57,8 @@ input[type=range]{padding:0;accent-color:var(--accent);background:none;border:0}
 .switch input:checked{background:var(--accent2)}.switch input:checked::after{left:23px}.switch small{display:block;color:var(--muted)}
 .choices{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr))}
 .choice{border:1px solid var(--line);border-radius:14px;padding:14px;background:var(--panel2);cursor:pointer;display:flex;align-items:center;gap:10px}
-.choice.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}.choice b{display:block}.choice small{color:var(--muted)}
+.choice.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}.pickm{display:none;grid-column:1/-1}.pickm .row{flex-wrap:nowrap}.pickm select{flex:1;min-width:0}.pickm small{display:block;color:var(--muted);margin-top:6px}
+@media (max-width:599px){.picklist>.choice{display:none}.picklist>.pickm{display:block}}.choice b{display:block}.choice small{color:var(--muted)}
 .seg{display:flex;flex-wrap:wrap;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px;width:max-content;max-width:100%}.seg button{border:0;background:none;padding:7px 14px;border-radius:9px}.seg button.on{background:var(--accent2);color:#fff}
 .list{border:1px solid var(--line);border-radius:14px;overflow:hidden;max-height:260px;overflow-y:auto}.list button{width:100%;border:0;border-radius:0;border-top:1px solid var(--line);justify-content:flex-start;background:var(--panel);text-align:left}.list button:first-child{border-top:0}
 .list button.on{background:var(--panel2);color:var(--accent)}.bars{margin-left:auto;display:inline-flex;gap:2px;align-items:flex-end;height:14px;vertical-align:middle}.bars i{width:3px;background:var(--line);border-radius:1px}.bars i.on{background:var(--accent)}
@@ -180,14 +183,16 @@ button.dangerbtn{background:#dc2626;border-color:#dc2626;color:#fff;font-weight:
 <label class="field"><span>Network name</span><input id="wSsid" maxlength="32" autocomplete="off"></label>
 <label class="field"><span>Password</span><input id="wPass" type="password" maxlength="63" autocomplete="new-password" placeholder="Empty for an open network"></label>
 <div id="wifiProgress" class="hidden"><div class="progress"><div id="wifiBar"></div></div><p class="sub" id="wifiProgressText" style="margin-top:8px"></p></div>
-<div class="btnbar wiz"><button id="wConnect"><svg width="16" height="16"><use href="#i-wifi"/></svg>Connect</button><button id="wNext">Continue</button></div></div>
+<div class="stepact"><button id="wConnect"><svg width="16" height="16"><use href="#i-wifi"/></svg>Connect</button></div>
+<div class="btnbar wiz"><button id="wNext">Continue</button></div></div>
 <div id="wiz1" class="hidden"><div class="stepper-title">Step 2 of 5</div><h2>Pair with your doorbell</h2><p class="notice" style="margin-top:12px"><b>For first pairing, place the chime 1–2 metres from the doorbell.</b> Strong reception helps automatic frequency tuning calibrate the radio. Keep it nearby through pairing, renaming and a few doorbell tests.</p>
 <label class="field"><span>Region</span><select id="pBand"><option value="868000000">Europe (tested)</option><option value="915000000">North America (untested)</option><option value="920000000">Asia-Pacific (untested)</option><option value="" disabled>Custom (Settings → Advanced)</option></select></label>
 <p class="sub" id="pFreq" style="margin:-4px 0 12px"></p>
 <div class="notice hidden" id="pUntested">Untested: only a European doorbell has been tested, and which frequency other regions use is assumed. This region needs a CC1101 module made for 915 MHz. Please report whether pairing works.</div>
 <ol class="howto"><li>In the <b>Reolink app</b>, open the doorbell → <b>Settings</b> → <b>Chime</b> → add a chime.</li><li>Wait until the app shows <b>“Searching…”</b>.</li><li>Press <b>Start pairing</b> below. The chime appears in the app as <b>Reolink Chime</b>.</li><li>Tap <b>Pair</b> in the app, then give the chime a name.</li><li>Press the physical doorbell or use the main Reolink chime <b>Test</b> control a few times. Wait a few seconds, then move the chime to its intended location and test again.</li></ol>
-<div class="phases" id="phases"></div><div class="progress"><div id="pairBar"></div></div><p class="sub" id="pairText" style="margin-top:8px">Ready.</p>
-<div class="btnbar wiz"><button class="ghost left" id="pBack">Back</button><button class="hidden" id="pCancel">Cancel</button><button id="pStart"><svg width="16" height="16"><use href="#i-link"/></svg><span>Start pairing</span></button><button id="pNext">Continue</button></div></div>
+<div class="phases" id="phases"></div><div class="progress"><div id="pairBar"></div></div>
+<div class="stepact"><button class="hidden" id="pCancel">Cancel</button><button id="pStart"><svg width="16" height="16"><use href="#i-link"/></svg><span>Start pairing</span></button><p class="sub" id="pairText">Ready.</p></div>
+<div class="btnbar wiz"><button class="ghost left" id="pBack">Back</button><button id="pNext">Continue</button></div></div>
 <div id="wiz2" class="hidden"><div class="stepper-title">Step 3 of 5</div><h2>Make it yours</h2><p class="sub">The name appears in the Reolink app. Doorbell rings follow its selected ringtone slot. Pick an output and a default sound for local tests and MQTT plays.</p>
 <label class="field"><span>Chime name</span><input id="sName" maxlength="32"></label>
 <div class="field"><span>Sound mode</span><div class="choices" id="wizTypes"></div></div>
@@ -213,12 +218,12 @@ button.dangerbtn{background:#dc2626;border-color:#dc2626;color:#fff;font-weight:
 <p class="sub" id="wizAuthPasswordHint"></p></div>
 <p class="sub" id="wizAuthHint"></p><p id="wizAuthError" class="issue error" role="alert"></p>
 <div class="btnbar wiz authbar"><button class="ghost left" id="wizAuthBack">Back</button><button class="ghost" id="wizAuthSkip">Skip for now</button><button class="primary" id="wizAuthNext">Continue</button></div></div>
-<div id="wiz4" class="hidden"><div class="stepper-title">Step 5 of 5</div><div class="success"><div class="big"><svg width="40" height="40"><use href="#i-check"/></svg></div><h2 id="doneTitle">Ready to finish</h2><p class="sub" id="doneText">Review your settings, then finish setup.</p></div>
+<div id="wiz4" class="hidden"><div class="stepper-title">Step 5 of 5</div><div class="success"><div class="big"><svg width="40" height="40"><use href="#i-check"/></svg></div><h2 id="doneTitle">Ready to finish</h2><p class="sub" id="doneText">Review your sound, wiring and sign-in settings. Finish saves your choices and closes setup; reopen it under Settings → General.</p></div>
 <dl class="kv" id="doneSummary"></dl>
 <div class="notice hidden" id="doneWiring" style="margin-top:14px"></div>
 <div class="notice hidden" id="doneAuth" style="margin-top:14px">Without sign-in, anyone on your WiFi (or near the setup hotspot) can change the chime. <a href="#" id="doneAuthLink">Configure sign-in</a>.</div>
-<div class="notice hidden" id="doneRestart" style="margin-top:14px">The setup hotspot is still on. Restart the chime to switch it off and use your home WiFi only.</div>
-<div class="btnbar wiz"><button id="dTest"><svg width="14" height="14"><use href="#i-play"/></svg>Test sound</button><button class="ghost left" id="dBack">Back</button><button class="hidden" id="dRestart">Restart chime</button><button class="primary" id="dHome">Finish</button></div></div>
+<div class="stepact" id="dTestRow"><button id="dTest"><svg width="14" height="14"><use href="#i-play"/></svg>Test sound</button></div>
+<div class="btnbar wiz"><button class="ghost left" id="dBack">Back</button><button class="primary" id="dHome">Finish</button></div></div>
 </div></section>
 <!-- SETTINGS -->
 <section class="tab" id="tab-settings"><div class="settings" id="settingsView">
@@ -404,8 +409,12 @@ function audioOutputCards(el,selected,onPick,allowUnwired=false){cards(el,OUTPUT
 const soundText=()=>!X?'Rings follow the doorbell ringtone':X.type===2?'Rings are silent (mode None) and only logged':X.type===1?'Gong patterns follow the doorbell ringtone':'Audio melodies follow the doorbell ringtone';
 const PATTERNS=[['Ding-dong','One strike'],['Double','Two strikes'],['Triple','Three strikes'],['Long ring','One long strike, for bells'],['Insistent','Five quick strikes'],['Slow double','Two strikes with a longer gap'],['Slow triple','Three strikes with longer gaps'],['Four strikes','Four evenly spaced strikes'],['Two pairs','Two pairs of strikes'],['Three pairs','Three pairs of strikes']].map(([n,d],i)=>[`${i+1}. ${n}`,d]);
 let X=null,gongType=1,audioPick=0,patternPick=0;
-function cards(el,list,selected,onPick,onPlay){$(el).innerHTML=list.map(([n,d],i)=>`<div class="choice${i===selected?' on':''}" data-i="${i}"><div><b>${n}</b><small>${d}</small></div><span class="spacer"></span>${onPlay?`<button class="small ghost" data-play="${i}" aria-label="Preview ${n}"><svg width="14" height="14"><use href="#i-play"/></svg></button>`:''}</div>`).join('');
-for(const c of $(el).children)c.onclick=e=>{const p=e.target.closest('[data-play]');if(p){onPlay(+p.dataset.play);return}if(onPick(+c.dataset.i)===false)return;for(const o of $(el).children)o.classList.toggle('on',o===c)}}
+// Lists with previews (melodies, patterns) become a dropdown with a play button on phones.
+function cards(el,list,selected,onPick,onPlay){const box=$(el);box.classList.toggle('picklist',!!onPlay);
+box.innerHTML=(onPlay?`<div class="pickm"><div class="row"><select aria-label="Choose">${list.map(([n],i)=>`<option value="${i}"${i===selected?' selected':''}>${n}</option>`).join('')}</select><button class="ghost" data-mplay aria-label="Preview"><svg width="14" height="14"><use href="#i-play"/></svg></button></div><small></small></div>`:'')+list.map(([n,d],i)=>`<div class="choice${i===selected?' on':''}" data-i="${i}"><div><b>${n}</b><small>${d}</small></div><span class="spacer"></span>${onPlay?`<button class="small ghost" data-play="${i}" aria-label="Preview ${n}"><svg width="14" height="14"><use href="#i-play"/></svg></button>`:''}</div>`).join('');
+const choices=box.querySelectorAll('.choice'),pick=box.querySelector('.pickm select'),mark=i=>{for(const o of choices)o.classList.toggle('on',+o.dataset.i===i);if(pick){pick.value=i;box.querySelector('.pickm small').textContent=list[i]?list[i][1]:''}};
+for(const c of choices)c.onclick=e=>{const p=e.target.closest('[data-play]');if(p){onPlay(+p.dataset.play);return}if(onPick(+c.dataset.i)===false)return;mark(+c.dataset.i)};
+if(pick){mark(selected);let last=selected;pick.onchange=()=>{const i=+pick.value;if(onPick(i)===false){pick.value=last;return}last=i;mark(i)};box.querySelector('[data-mplay]').onclick=()=>onPlay(+pick.value)}}
 const playMelody=(i,output=audioPick)=>act('/api/gong/test',{type:0,audio_output:output,melody:i,volume:Math.floor(+$('level').value*appVol/4),extra_relay:$('relay').checked,extra_relay_ms:+$('relayMs').value},'Playing preview');
 const playPattern=i=>act('/api/gong/test',{type:1,pattern:i,pulse_ms:+$('pulse').value,gap_ms:+$('gap').value},'Ringing the gong');
 function melodyCards(el,selected,onPick,output=audioPick){cards(el,MELODIES,selected,onPick,i=>playMelody(i,output))}
@@ -540,8 +549,8 @@ if(step===3&&!passive)wizardAuth();if(step===4&&!passive)doneView()}
 async function scan(again){clearTimeout(scanTimer);try{const r=await api('/api/wifi/scan'+(again?'?refresh=1':''));if(r.scanning){if(again||!$('networks').dataset.ok)$('networks').innerHTML='<button disabled>Scanning…</button>';scanTimer=setTimeout(scan,1500);return}
 $('networks').dataset.ok=1;$('networks').innerHTML=r.networks.length?r.networks.map(n=>`<button data-ssid="${esc(n.ssid)}">${n.secure?'🔒':'🔓'} ${esc(n.ssid)} ${bars(n.rssi)}</button>`).join(''):'<button disabled>No networks found</button>';
 for(const b of $('networks').children)if(b.dataset.ssid!==undefined)b.onclick=()=>{$('wSsid').value=b.dataset.ssid;for(const o of $('networks').children)o.classList.toggle('on',o===b);$('wPass').focus()}}catch(e){toast(e.message,true)}}
-// One primary button per step: the action until the step is done, then Continue.
-function wifiView(){const ok=!!(S&&S.wifi_connected);$('wConnect').classList.toggle('primary',!ok);$('wNext').classList.toggle('primary',ok)}
+// One primary button per step: the step action until it is done, then Continue; the footer offers Skip for now meanwhile.
+function wifiView(){const ok=!!(S&&S.wifi_connected);$('wConnect').classList.toggle('primary',!ok);$('wNext').classList.toggle('primary',ok);$('wNext').classList.toggle('ghost',!ok);$('wNext').textContent=settingsStep===0?'Done':ok?'Continue':'Skip for now'}
 $('scan').onclick=()=>scan(true);$('wNext').onclick=()=>settingsStep===0?closeSettingsFlow():wizard(1);
 $('wConnect').onclick=async()=>{const ssid=$('wSsid').value.trim();if(!ssid)return toast('Choose or type a network name',true);try{await api('/api/wifi/connect',{ssid,password:$('wPass').value})}catch(e){return toast(e.message,true)}
 $('wifiProgress').classList.remove('hidden');$('wConnect').disabled=true;const t0=Date.now();clearInterval(wifiTimer);wifiTimer=setInterval(async()=>{const el=Date.now()-t0;$('wifiBar').style.width=Math.min(100,el/200)+'%';await refresh();
@@ -550,7 +559,7 @@ else if(el>20000){clearInterval(wifiTimer);$('wConnect').disabled=false;$('wifiP
 function pairView(){if(!S)return;const p=S.pairing,idx=PAIR_PHASES.findIndex(x=>x[0]===p),active=idx>=0&&idx<4,joined=S.joined&&!active;
 $('phases').innerHTML=PAIR_PHASES.map(([k,t],i)=>{const st=joined||i<idx?'done':i===idx?'on':'';return `<div class="phase ${st}"><span class="dot ${st==='done'?'ok':st==='on'?'warn pulse':''}"></span>${t}</div>`}).join('');
 const left=pairStarted?Math.max(0,300-Math.round((Date.now()-pairStarted)/1000)):0;$('pairBar').style.width=active&&pairStarted?(100*(300-left)/300)+'%':joined?'100%':'0';
-$('pStart').classList.toggle('hidden',active);$('pBand').disabled=active||pBandBusy;$('pCancel').classList.toggle('hidden',!active);$('pStart').classList.toggle('primary',!joined);$('pNext').classList.toggle('primary',joined);$('pStart').lastChild.textContent=joined||S.paired?'Pair again':'Start pairing';
+$('pStart').classList.toggle('hidden',active);$('pBand').disabled=active||pBandBusy;$('pCancel').classList.toggle('hidden',!active);$('pStart').classList.toggle('primary',!joined);$('pNext').classList.toggle('primary',joined);$('pNext').classList.toggle('ghost',!joined);$('pNext').textContent=settingsStep===1?'Done':joined?'Continue':'Skip for now';$('pStart').lastChild.textContent=joined||S.paired?'Pair again':'Start pairing';
 $('pairText').textContent=active?(p==='discovering'?(pairStarted?`Waiting for the doorbell… ${Math.floor(left/60)}:${String(left%60).padStart(2,'0')} left. `:'')+'Tap Pair in the app when “Reolink Chime” appears.':'Pairing in progress…'):joined?`Linked to doorbell ${S.doorbell_id}.`:p!=='idle'&&p!=='joined'?`Last attempt: ${p}. Try again.`:'Ready.';
 if(joined&&pairStarted){pairStarted=0;toast('Paired with your doorbell');if(activeTab==='setup'&&settingsStep<0)setTimeout(()=>{if(activeTab==='setup'&&settingsStep<0&&wizStep===1)wizard(2)},1500)}}
 function pBandSync(){if(pBandBusy||!G)return;const hz=G.frequency_hz,o=[...$('pBand').options].find(x=>x.value&&+x.value===hz);$('pBand').value=o?o.value:'';$('pFreq').textContent=`Frequency: ${(hz/1e6).toFixed(3)} MHz`;$('pUntested').classList.toggle('hidden',!(hz>=902e6&&hz<=928e6))}
@@ -571,7 +580,7 @@ function wizardPreviewReady(){return wizWireOk&&!wizWireBusy&&P&&sameWiring(wiza
 function wizardPreview(sound){if(!wizardPreviewReady())return toast('Finish setup on the last step to apply this wiring before testing sound.',true);
 const body=wizType===1?{type:1,pattern:sound,pulse_ms:X.pulse_ms,gap_ms:X.gap_ms}:{type:0,audio_output:wizAudioPick,melody:sound,volume:Math.floor(G.volume*C.volume/4),extra_relay:wizExtraRelay,extra_relay_ms:G.relay_ms};
 return act('/api/gong/test',body,'Playing preview')}
-function wizardWireState(){$('sNext').disabled=wizWireBusy||!wizWireOk;$('sNext').textContent='Continue';for(const b of $('melodies2').querySelectorAll('[data-play]'))b.disabled=!wizardPreviewReady()}
+function wizardWireState(){$('sNext').disabled=wizWireBusy||!wizWireOk;$('sNext').textContent='Continue';for(const b of $('melodies2').querySelectorAll('[data-play],[data-mplay]'))b.disabled=!wizardPreviewReady()}
 function wizardWireCheck(){const version=++wizWireVersion;clearTimeout(wizWireTimer);wizWireBusy=true;wizWireOk=false;wizardWireState();wizWireTimer=setTimeout(async()=>{try{
 const r=await api('/api/setup/sound/check',wizardSoundBody());if(version!==wizWireVersion)return;wizWireOk=r.ok;
 $('wizWireIssues').innerHTML=r.issues.filter(i=>i.level!=='info').map(i=>`<div class="issue ${i.level}"><span>${esc(i.role)}: ${esc(i.text)}</span></div>`).join('');
@@ -613,19 +622,21 @@ await api('/api/setup/sound',wizReviewBody);soundSaved=true;
 if(wizReviewAuth)await api('/api/auth',wizReviewAuth);
 await api('/api/setup',{visible:false});
 $('wizAuthPass').value='';$('wizAuthConfirm').value='';wizReviewAuth=null;
-wizReviewBody=null;wizReviewPins=null;wizSetupSaved=true;await loadSettings();await refresh();doneView()
+wizReviewBody=null;wizReviewPins=null;wizSetupSaved=true;await loadSettings();await refresh();$('dHome').disabled=false;$('dBack').disabled=false;toast('Setup complete');show('home');
+// The setup hotspot stays on until a restart once home WiFi works.
+if(S.ap_active&&S.wifi_connected&&await ask({title:'Switch off the setup hotspot?',text:'The chime still runs its setup hotspot. Restart it to use your home WiFi only.',ok:'Restart now',cancel:'Later'}))act('/api/reboot',{},'Restarting… open http://reolink-chime.local in a moment');return
 }catch(e){toast((soundSaved?'Sound and wiring saved; setup could not finish. ':'')+e.message,true);if(soundSaved){await loadSettings();await refresh();doneView()}}$('dHome').disabled=false;$('dBack').disabled=false}
 function doneView(){const pending=!!wizReviewBody,cfg=pending?wizReviewBody.chime:null,map=pending?wizReviewPins:P&&P.pins,type=cfg?cfg.type:X?X.type:1,output=cfg?cfg.audio_output:X?X.audio_output:0;
 const signIn=pending&&wizReviewAuth?wizReviewAuth.enabled:!!(A&&A.enabled),user=pending&&wizReviewAuth&&wizReviewAuth.username?wizReviewAuth.username:A?A.username:'admin';
 const rows=[['Name',cfg?cfg.name:C.name],['Sign-in',signIn?'On · '+user:'Off'],['Sound mode',TYPES[type][0]+(type===0?' · '+OUTPUTS[output][0]:'')],['WiFi',S.wifi_connected?`${S.ssid} (${S.ip})`:'Not connected'],['Doorbell',S.joined?`Linked (${S.doorbell_id})`:S.paired?'Paired, not connected':'Not paired']];
 if(type===1)rows.push(['Gong pattern',PATTERNS[cfg?cfg.pattern:X.pattern][0]],['Relay GPIO',map?'GPIO'+map.relay:'—'],['Relay level',map&&map.relay_active_low?'Active low':'Active high']);
 else if(type===0){rows.push(['Melody',MELODIES[cfg?cfg.melody:G.melody][0]],['Audio output GPIO',map?'GPIO'+map.audio:'—']);if(cfg?cfg.extra_relay:G.relay)rows.push(['Extra relay GPIO',map?'GPIO'+map.relay:'—'])}else rows.push(['Sound','None (silent)']);rows.push(['Address','http://'+S.hostname]);kv('doneSummary',rows);
-const wiringChanged=pending&&P&&!sameWiring(wizReviewPins,P.pins);$('doneTitle').textContent=pending?'Ready to finish':'All set';$('doneText').textContent=pending?'Review your sound, wiring and sign-in settings. Finish saves your choices.':'Press your doorbell or test the sound below. Setup is now hidden; show it again under Settings → General.';
+const wiringChanged=pending&&P&&!sameWiring(wizReviewPins,P.pins);
 $('doneWiring').classList.toggle('hidden',!wiringChanged);$('doneWiring').textContent='Finish saves and applies your GPIO changes without restarting. Sound testing becomes available immediately.';
-$('dHome').textContent=pending?'Finish':'Go to Home';$('dTest').classList.toggle('hidden',type===2);$('dTest').disabled=pending?!wizardPreviewReady():!!P&&!sameWiring(P.saved,P.pins);
-$('doneAuth').classList.toggle('hidden',signIn);const r=!pending&&S.ap_active&&S.wifi_connected;$('doneRestart').classList.toggle('hidden',!r);$('dRestart').classList.toggle('hidden',!r)}
+$('dTestRow').classList.toggle('hidden',type===2);$('dTest').disabled=pending?!wizardPreviewReady():!!P&&!sameWiring(P.saved,P.pins);
+$('doneAuth').classList.toggle('hidden',signIn)}
 $('dTest').onclick=()=>wizReviewBody?wizardPreview(wizType===1?wizPattern:wizMelody):act('/api/gong/test',{},'Playing chime');
-$('dBack').onclick=()=>{if(wizReviewBody)wizard(3);else wizard(2)};$('dHome').onclick=finishSetup;$('doneAuthLink').onclick=e=>{e.preventDefault();if(wizReviewBody){wizard(3);$('wizAuthOn').focus()}else{show('settings');openSection('security');$('authOn').focus()}};$('dRestart').onclick=()=>act('/api/reboot',{},'Restarting… open http://reolink-chime.local in a moment');
+$('dBack').onclick=()=>{if(wizReviewBody)wizard(3);else wizard(2)};$('dHome').onclick=finishSetup;$('doneAuthLink').onclick=e=>{e.preventDefault();if(wizReviewBody){wizard(3);$('wizAuthOn').focus()}else{show('settings');openSection('security');$('authOn').focus()}}
 // Debug
 function renderDiag(){if(!S)return;const d=[['Radio',S.radio_ok?'OK':'Error'],['Chip',`CC1101 v${S.radio_version}`],['State',S.marcstate===13?'Receiving':'0x'+S.marcstate.toString(16)],['Noise',S.rssi_dbm.toFixed(1)+' dBm'],['Receiver',S.rx_mode===1?'ESP32 bit sampling':'CC1101 packet engine'],['Frequency',(S.rf_frequency_hz/1e6).toFixed(4)+' MHz'],['Trim',`${S.rf_trim>0?'+':''}${S.rf_trim} (${!S.auto_trim?'manual':S.rx_mode===1?'automatic, paused in ESP32 mode':S.trim_calibrated?'automatic':'automatic, measuring'}) · ${S.rx_bandwidth_khz} kHz bandwidth`],['TX polarity',S.tx_polarity],['Packets',S.packets],['Good CRC',S.crc_ti],['Bad CRC',S.crc_bad],['Dropped frames',S.dropped],['Invalid lengths',S.invalid_lengths],['False syncs',S.false_syncs],['Sent',`${S.transmitted} (${S.transmit_errors} errors)`],['Radio resets',S.radio_resets],['Link',S.pairing],['Free memory',Math.round(S.free_heap/1024)+' KB'],['Storage',S.storage_ok?'OK':'Write failed'],['MQTT',S.mqtt],['Clock',S.time_synced?'Synchronised':'Not set'],['Sign-in',S.auth_enabled?'On':'Off']];
 $('diag').innerHTML=d.map(([k,v])=>`<div class="stat"><div class="label">${k}</div><div style="font-weight:600;overflow-wrap:anywhere">${esc(v)}</div></div>`).join('');$('dbgUp').textContent='Up '+dur(S.uptime_ms)}

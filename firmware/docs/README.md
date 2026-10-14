@@ -51,7 +51,7 @@ alternatives, as explained in the [original firmware audit](vendor-sounds.md).
 | `images/ui-auth-existing-desktop.png`, `images/ui-auth-existing-mobile.png` | Setup step 4: keeping a saved password |
 | `images/ui-auth-review-desktop.png`, `images/ui-auth-review-mobile.png` | Setup step 5: sign-in choice in final review |
 | `images/web-setup-review.png` | Setup: last step, reviewing GPIO changes before Finish |
-| `images/web-setup-complete.png` | Setup: live GPIOs applied, sound testing enabled |
+| `images/web-setup-complete.png` | Home after Finish saved the choices and closed Setup |
 | `images/web-setup-wifi.png` | Setup step 1: WiFi scan/connect |
 | `images/web-setup-pairing.png` | Setup step 2: pairing instructions and Start pairing |
 | `images/ui-setup-hidden-desktop.png`, `images/ui-setup-hidden-mobile.png` | Home with Setup hidden after completion |
