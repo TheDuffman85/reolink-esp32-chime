@@ -93,9 +93,9 @@ reloading across mode changes preserves that method. Switching between Audio
 and Gong also preserves the numbered sound slot. Both catalogs are checked for ten choices, with previews of the last
 slot verified for PWM, DAC and Gong. The shared Audio GPIO
 selector and DAC pin restrictions are also checked. Setup is checked for
-validation failures, Back/Continue without saving, and live GPIO application
+validation failures, Back/Next without saving, and live GPIO application
 only on the final Finish click. The five-step wizard also checks optional
-sign-in off/on, Skip preserving existing settings, password confirmation,
+sign-in off/on, Next without changes preserving existing settings, password confirmation,
 keeping saved passwords, and recovery from a failed authentication save.
 Setup melody/pattern drafts survive status/settings refreshes. Audio previews
 check the pending extra-relay choice and pulse length, and a DAC method remembered

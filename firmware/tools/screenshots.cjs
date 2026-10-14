@@ -442,7 +442,7 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     assert.equal(previews.at(-1).extra_relay,false);
     const savesBeforeReview = setupSaves.length;
     await page.locator('#sNext').click();
-    await page.locator('#wizAuthSkip').click();
+    await page.locator('#wizAuthNext').click();
     await page.locator('#wiz4').waitFor();
     assert.equal(setupSaves.length, savesBeforeReview);
     assert.equal(status.setup_visible,true);
@@ -459,11 +459,11 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     assert.deepEqual(await page.locator('#wizAudioPin option').evaluateAll(options => options.map(o => o.value)), ['25', '26']);
     await page.locator('#wizAudioPin').selectOption('26');
     await page.waitForFunction(() => !wizWireBusy && wizWireOk);
-    assert.equal(await page.locator('#sNext').textContent(), 'Continue');
+    assert.equal(await page.locator('#sNext').textContent(), 'Next');
     assert.equal(await page.locator('#melodies2 button[data-play="0"]').isDisabled(), true);
     const savesBeforeApply = setupSaves.length;
     await page.locator('#sNext').click();
-    await page.locator('#wizAuthSkip').click();
+    await page.locator('#wizAuthNext').click();
     assert.equal(setupSaves.length, savesBeforeApply);
     assert.equal(await page.locator('#dHome').textContent(), 'Finish');
     assert.equal(await page.locator('#dTest').isDisabled(), true);
@@ -473,7 +473,7 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     assert.equal(setupSaves.length, savesBeforeApply);
     await page.waitForFunction(() => !wizWireBusy && wizWireOk);
     await page.locator('#sNext').click();
-    await page.locator('#wizAuthSkip').click();
+    await page.locator('#wizAuthNext').click();
     await page.locator('#dHome').click();
     await page.waitForFunction(() => wizSetupSaved);
     assert.equal(setupSaves.length, savesBeforeApply + 1);
@@ -562,11 +562,11 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     const authCount=authSaves.length;
     await page.locator('#sNext').click();
     assert.equal(await page.locator('#steps > div').count(),5);
-    assert.equal(await page.locator('#wizAuthOn').isChecked(),false);
+    assert.equal(await page.locator('#wizAuthModes .choice.on b').textContent(),'No sign-in');
     assert.equal(await page.locator('#wizAuthFields').isVisible(),false);
     await capture('ui-auth-off-desktop.png','setup',1100,850,undefined,true);
     await capture('ui-auth-off-mobile.png','setup',390,900,undefined,true);
-    await page.locator('#wizAuthSkip').click();
+    await page.locator('#wizAuthNext').click();
     assert.equal(authSaves.length,authCount);
     assert.match(await page.locator('#doneSummary').textContent(),/Sign-inOff/);
     status.ap_active=true;
@@ -581,7 +581,7 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     await reopenSetup();
     await page.waitForFunction(()=>!wizWireBusy&&wizWireOk);
     await page.locator('#sNext').click();
-    await page.locator('#wizAuthOn').check();
+    await page.locator('#wizAuthModes .choice').filter({hasText:'Require sign-in'}).click();
     assert.equal(await page.locator('#wizAuthNext').isDisabled(),true);
     await page.locator('#wizAuthUser').fill('bad:user');
     assert.match(await page.locator('#wizAuthError').textContent(),/without a colon/);
@@ -613,16 +613,16 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     assert.equal(new URL(page.url()).pathname,'/');
     assert.equal(await page.locator('#wizAuthPass').inputValue(),'');
     assert.equal(await page.locator('#wizAuthConfirm').inputValue(),'');
-    // Keeping a saved password needs no new password, and Skip preserves auth.
+    // Keeping a saved password needs no new password, and Next without changes preserves auth.
     await reopenSetup();
     await page.waitForFunction(()=>!wizWireBusy&&wizWireOk);
     await page.locator('#sNext').click();
-    assert.equal(await page.locator('#wizAuthOn').isChecked(),true);
+    assert.equal(await page.locator('#wizAuthModes .choice.on b').textContent(),'Require sign-in');
     assert.equal(await page.locator('#wizAuthNext').isDisabled(),false);
     assert.match(await page.locator('#wizAuthPassLabel').textContent(),/keep the current/);
     await capture('ui-auth-existing-desktop.png','setup',1100,850,undefined,true);
     await capture('ui-auth-existing-mobile.png','setup',390,900,undefined,true);
-    await page.locator('#wizAuthSkip').click();
+    await page.locator('#wizAuthNext').click();
     await page.locator('#dHome').click();
     await page.waitForFunction(()=>wizSetupSaved);
     assert.equal(authSaves.length,authCount+1);
@@ -631,7 +631,7 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     await reopenSetup();
     await page.waitForFunction(()=>!wizWireBusy&&wizWireOk);
     await page.locator('#sNext').click();
-    await page.locator('#wizAuthOn').uncheck();
+    await page.locator('#wizAuthModes .choice').filter({hasText:'No sign-in'}).click();
     await page.locator('#wizAuthNext').click();
     assert.equal(status.auth_enabled,true);
     await page.locator('#dHome').click();
@@ -661,7 +661,7 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
         await page.waitForFunction(() => !wizWireBusy && wizWireOk);
       }
       await page.locator('#sNext').click();
-    await page.locator('#wizAuthSkip').click();
+    await page.locator('#wizAuthNext').click();
       await capture(`ui-review-${slug}-desktop.png`, 'setup', 1100, 850, undefined, true);
       await capture(`ui-review-${slug}-mobile.png`, 'setup', 390, 900, undefined, true);
     }
@@ -772,7 +772,7 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     await page.locator('#sName').fill('Demo ESP32 Chime');
     await page.waitForFunction(()=>!wizWireBusy&&wizWireOk);
     await page.locator('#sNext').click();
-    await page.locator('#wizAuthOn').check();await page.locator('#wizAuthUser').fill('demo-owner');
+    await page.locator('#wizAuthModes .choice').filter({hasText:'Require sign-in'}).click();await page.locator('#wizAuthUser').fill('demo-owner');
     await page.locator('#wizAuthPass').fill('example-password');await page.locator('#wizAuthConfirm').fill('example-password');
     await capture('ui-initial-signin-desktop.png','setup',1100,850,undefined,true);
     await capture('ui-initial-signin-mobile.png','setup',390,900,undefined,true);

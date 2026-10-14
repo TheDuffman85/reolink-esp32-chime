@@ -5,7 +5,7 @@ the Reolink app, then use an existing low-voltage gong through a relay, PWM or D
 through an external amplifier, or silent MQTT events. The doorbell communicates directly with the
 CC1101; WiFi provides setup, control, updates and Home Assistant integration.
 
-![Web interface: Home](firmware/docs/images/readme-1.0.30-36c9324a2b6d-home.png)
+![Web interface: Home](firmware/docs/images/readme-1.0.30-616e5a9c19c5-home.png)
 
 The screenshots render the firmware's embedded UI with **synthetic demonstration
 data** and the firmware version from `firmware/version.json`. They do not show
@@ -146,7 +146,7 @@ install a blank board.
 2. Join the hotspot and open **http://192.168.4.1/** manually.
 3. In Setup, scan for a **2.4 GHz** WiFi network, enter its password and connect.
 4. On your LAN, open **http://reolink-chime.local/** or the device IP shown in the UI/serial log.
-5. Continue through pairing and sound/wiring, optionally configure sign-in, then review and click **Finish**. Sign-in can also be changed later in Settings → Sign-in.
+5. Click **Next** through pairing and sound/wiring, optionally configure sign-in, then review and click **Finish**. Sign-in can also be changed later in Settings → Sign-in.
 
 Until the initial setup finishes, **Setup** is the only available page, including
 after pairing, a browser reload or a chime restart. **Finish** unlocks Home,
@@ -175,12 +175,12 @@ An empty custom AP password falls back to the sign-in password while sign-in is
 enabled, otherwise an open hotspot. AP passwords are 8–63 characters. Mode and
 AP changes require restart; **Change network → Connect** (also in Setup) switches back to client mode.
 
-![Initial WiFi setup with only the Setup page available](firmware/docs/images/readme-1.0.30-36c9324a2b6d-setup-wifi.png)
+![Initial WiFi setup with only the Setup page available](firmware/docs/images/readme-1.0.30-616e5a9c19c5-setup-wifi.png)
 
 <details>
 <summary>Initial setup on a phone</summary>
 
-![Initial setup on a phone with only Setup in the navigation](firmware/docs/images/readme-1.0.30-36c9324a2b6d-setup-mobile.png)
+![Initial setup on a phone with only Setup in the navigation](firmware/docs/images/readme-1.0.30-616e5a9c19c5-setup-mobile.png)
 
 </details>
 
@@ -207,7 +207,7 @@ ACK transmission. Reboot or a doorbell disconnect request triggers rejoin.
 Joined is a local state; a physical press verifies that the doorbell accepted
 the exchange. Repeated RF ring transmissions produce one local event.
 
-![Pairing](firmware/docs/images/readme-1.0.30-36c9324a2b6d-setup-pairing.png)
+![Pairing](firmware/docs/images/readme-1.0.30-616e5a9c19c5-setup-pairing.png)
 
 New node IDs use `1..0x7FFFFFFF`. If an older identity is marked incompatible,
 remove its chime entry in Reolink and start pairing to replace it. Canceling a
@@ -237,11 +237,11 @@ physical press when verifying reception.
 The Sound views show the ten numbered slots used by the doorbell, with local
 preview controls and defaults for tests and MQTT plays.
 
-![Gong settings: ten numbered strike patterns](firmware/docs/images/readme-1.0.30-36c9324a2b6d-sound-gong.png)
+![Gong settings: ten numbered strike patterns](firmware/docs/images/readme-1.0.30-616e5a9c19c5-sound-gong.png)
 
-![Audio settings: ten melodies with PWM output](firmware/docs/images/readme-1.0.30-36c9324a2b6d-sound-pwm.png)
+![Audio settings: ten melodies with PWM output](firmware/docs/images/readme-1.0.30-616e5a9c19c5-sound-pwm.png)
 
-![Audio settings: ten melodies with DAC output](firmware/docs/images/readme-1.0.30-36c9324a2b6d-sound-dac.png)
+![Audio settings: ten melodies with DAC output](firmware/docs/images/readme-1.0.30-616e5a9c19c5-sound-dac.png)
 
 **Gong** is the default for new configurations and the leftmost choice in
 Sound and Setup. **Audio** plays the same melodies using either **PWM** or
@@ -287,35 +287,35 @@ Sound and Setup previews use the selected audio level and app volume; MQTT play 
 unless `force:true` is supplied.
 
 Setup includes Relay/Audio GPIOs and relay polarity for the selected mode.
-Continue opens optional sign-in, followed by the final review. **Finish** saves
-and applies sound, wiring and any sign-in changes without restarting. Skip
-leaves the current sign-in settings unchanged; existing passwords can be kept
-by leaving both password fields empty. Sound tests are enabled after applying any
+**Next** opens optional sign-in, followed by the final review. **Finish** saves
+and applies sound, wiring and any sign-in changes without restarting. The
+sign-in step offers **No sign-in** or **Require sign-in**; an existing password
+is kept by leaving both password fields empty. Sound tests are enabled after applying any
 pin changes. After initial setup finishes, **Settings → Advanced** exposes radio,
 LED and button assignments; reopened Setup also provides an Advanced wiring link.
 
-![Setup: Gong mode and output wiring](firmware/docs/images/readme-1.0.30-36c9324a2b6d-setup-wiring.png)
+![Setup: Gong mode and output wiring](firmware/docs/images/readme-1.0.30-616e5a9c19c5-setup-wiring.png)
 
-![Setup: optional sign-in](firmware/docs/images/readme-1.0.30-36c9324a2b6d-setup-signin.png)
+![Setup: optional sign-in](firmware/docs/images/readme-1.0.30-616e5a9c19c5-setup-signin.png)
 
 <details>
 <summary>Final setup review and completion</summary>
 
-![Setup: review before Finish](firmware/docs/images/readme-1.0.30-36c9324a2b6d-setup-review.png)
+![Setup: review before Finish](firmware/docs/images/readme-1.0.30-616e5a9c19c5-setup-review.png)
 
-![Setup finished: choices applied and Home, Sound and Settings unlocked](firmware/docs/images/readme-1.0.30-36c9324a2b6d-setup-complete.png)
+![Setup finished: choices applied and Home, Sound and Settings unlocked](firmware/docs/images/readme-1.0.30-616e5a9c19c5-setup-complete.png)
 
 </details>
 
 After Finish, the normal navigation contains Home, Sound and Settings.
 Use **Settings → General → Show Setup tab** to show the wizard again.
 
-![General settings: show or hide Setup](firmware/docs/images/readme-1.0.30-36c9324a2b6d-settings-general.png)
+![General settings: show or hide Setup](firmware/docs/images/readme-1.0.30-616e5a9c19c5-settings-general.png)
 
 In **Settings → Network & time**, WiFi mode comes first. The connection and
 scan controls below it appear only with Client selected.
 
-![Network settings: WiFi mode above client connection](firmware/docs/images/readme-1.0.30-36c9324a2b6d-settings-wifi.png)
+![Network settings: WiFi mode above client connection](firmware/docs/images/readme-1.0.30-616e5a9c19c5-settings-wifi.png)
 
 
 GPIO saves apply immediately without restarting. Optional audio/relay/LED/button can be disabled;
@@ -334,15 +334,15 @@ within their panel.
 <details>
 <summary>Mobile UI and Debug screenshots</summary>
 
-![Phone interface](firmware/docs/images/readme-1.0.30-36c9324a2b6d-mobile.png)
+![Phone interface](firmware/docs/images/readme-1.0.30-616e5a9c19c5-mobile.png)
 
-![Debug diagnostics](firmware/docs/images/readme-1.0.30-36c9324a2b6d-debug.png)
+![Debug diagnostics](firmware/docs/images/readme-1.0.30-616e5a9c19c5-debug.png)
 
 </details>
 
-![Security settings](firmware/docs/images/readme-1.0.30-36c9324a2b6d-settings-security.png)
+![Security settings](firmware/docs/images/readme-1.0.30-616e5a9c19c5-settings-security.png)
 
-![Radio and GPIO settings](firmware/docs/images/readme-1.0.30-36c9324a2b6d-wiring.png)
+![Radio and GPIO settings](firmware/docs/images/readme-1.0.30-616e5a9c19c5-wiring.png)
 
 ## Frequencies and RF tuning
 
@@ -373,7 +373,7 @@ optional credentials, base topic and discovery options. Connect the ESP32 in
 client WiFi mode. The default base is `reolink_chime/<device-id>`; read its actual
 value from `/api/integrations`. The discovery prefix defaults to `homeassistant`.
 
-![MQTT settings](firmware/docs/images/readme-1.0.30-36c9324a2b6d-mqtt.png)
+![MQTT settings](firmware/docs/images/readme-1.0.30-616e5a9c19c5-mqtt.png)
 
 | Topic suffix | Use |
 |---|---|
@@ -419,7 +419,7 @@ RX/playback pause during writing;
 the device restarts and the UI waits for it to return. Failed uploads resume
 operation and rejoin. Use USB for recovery from an interrupted update.
 
-![Update restart screen](firmware/docs/images/readme-1.0.30-36c9324a2b6d-update.png)
+![Update restart screen](firmware/docs/images/readme-1.0.30-616e5a9c19c5-update.png)
 
 Set the firmware version manually in `firmware/version.json`; builds keep it
 unchanged. Push a tag exactly matching that version (e.g. `1.0.24`, without a
