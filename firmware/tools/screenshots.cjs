@@ -219,10 +219,6 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     // Stabilise the documentation fixture; normal firmware polling is unchanged.
     const stabilise = async () => page.evaluate(() => {
       for (let id = 1; id < 100; ++id) clearInterval(id);
-      const label = document.createElement('div');
-      label.textContent = 'DOCUMENTATION DEMO · Synthetic data · No hardware connected';
-      label.style.cssText = 'padding:10px 16px;background:#273847;color:#ffd78d;font:13px/1.5 system-ui;border-bottom:1px solid #506778';
-      document.querySelector('header').prepend(label);
     });
     await stabilise();
     // Setup exists only during initial setup, so the fixture re-enters that state.
@@ -841,18 +837,9 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     };
     const readmeScreenshots={};
     for(const [view,original] of Object.entries(readmeImages)) {
-      const file=`readme-${firmwareVersion}-${embeddedUiHash.slice(0,12)}-${view}.png`,capture=results.find(item=>item.file===original);
+      const file=`readme-${view}.png`,capture=results.find(item=>item.file===original);
       assert.ok(capture,original);fs.copyFileSync(path.join(images,original),path.join(images,file));
       readmeScreenshots[view]=file;results.push({...capture,file,source_file:original});
-    }
-    for (const document of [path.join(root,'../README.md')]) {
-      // The README is optional when running the harness in a scratch directory.
-      if (!fs.existsSync(document)) continue;
-      const text=fs.readFileSync(document,'utf8');
-      const updated=text.replace(/readme-\d+\.\d+\.\d+-(?:[0-9a-f]{12}-)?([a-z-]+)\.png/g,(file,view)=>{
-        assert.ok(readmeScreenshots[view],view);return readmeScreenshots[view];
-      });
-      if(updated!==text)fs.writeFileSync(document,updated);
     }
     const report = { firmware_version:firmwareVersion,readme_screenshots:readmeScreenshots,embedded_ui_sha256: embeddedUiHash,
       data: 'Synthetic API fixtures; no device connection', screenshots: results,

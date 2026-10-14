@@ -75,11 +75,8 @@ alternatives, as explained in the [original firmware audit](vendor-sounds.md).
 `web-maintenance.png` retains its old filename for links but now shows **Settings → Debug**;
 OTA is in **Settings → Firmware**. All captures render the current embedded
 `include/WebUi.h` HTML through [tools/screenshots.cjs](../tools/screenshots.cjs).
-They use synthetic API responses, signed-positive demonstration IDs and generated
-AES/CRC packet examples. They are **not ESP32, doorbell or RF captures**.
-The banner **DOCUMENTATION DEMO · Synthetic data · No hardware connected** is
-added by the generator; the embedded firmware itself remains unchanged. No actual
-password, AES key or device token appears in the captures.
+They use synthetic API responses, signed-positive IDs and generated AES/CRC
+packet examples. No actual password, AES key or device token appears in the captures.
 
 Desktop captures use 1100 px width; the mobile view uses 390 px. Desktop captures include whole pages so all controls are visible; the phone
 standard capture keeps the fixed navigation at the bottom of its viewport.
@@ -135,11 +132,8 @@ NODE_PATH=/path/to/node_modules SCREENSHOT_BROWSER_EXE=/path/to/chromium node fi
 
 The generator replaces the `web-*.png` and `ui-*.png` files and screenshot
 manifest. Its synthetic version labels follow `firmware/version.json`.
-README images are copies of the verified captures named
-`readme-<version>-<ui-hash>-<view>.png`, where `ui-hash` is the first twelve
-characters of the embedded UI's SHA-256. The generator updates image links in
-the project README. These URLs refresh when the UI
-changes, even without a firmware version change, avoiding stale cached images.
+README images are copies of the verified captures named `readme-<view>.png`,
+so the project README links stay the same across releases.
 The manifest records each README image's source capture, UI hash and firmware
 version, plus the ten-slot and mode-switch checks.
 If the browser cannot launch under a restricted execution sandbox, use an
