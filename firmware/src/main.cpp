@@ -170,7 +170,7 @@ void loop() {
   static bool buttonWasDown=false, resetHandled=false;
   static uint32_t buttonAt=0, ledAt=0;
   receiveRadio();
-  server.handleClient(); if (apActive) dns.processNextRequest();
+  serviceWeb(); if (apActive) dns.processNextRequest();
   serviceLink();
   static bool wasConnected = false;
   const bool connected = WiFi.status()==WL_CONNECTED;

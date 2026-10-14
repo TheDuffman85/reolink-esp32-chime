@@ -187,6 +187,15 @@ in the ten-byte pin map. Ring history writes after three seconds of
 quiet reception/playback. Timed mute, packet history and text logs are RAM-only.
 Flash writes/OTA pause reception. Check dropped/error counts under WiFi load.
 
+Serving a UI page temporarily disables WiFi modem sleep to reduce HTTP latency.
+Only the visible browser UI marks its requests with `X-WebUI-Active: 1` to keep
+it awake; ordinary API calls and polling do not change the sleep policy. After
+60 seconds without UI activity, the previous sleep mode returns. Hidden/closed
+tabs stop normal polling and hidden tabs omit the marker. OTA retains its
+existing sleep-disabled upload behavior; a failed/aborted update uses the same
+idle timeout. This trades higher WiFi power consumption during web use for
+faster responses, without changing the CPU clock or RF receive/playback timing.
+
 `Sounds.h` defines ten synthesized melodies and ten relay patterns, selected per
 doorbell ring by music ID 0–9. Received IDs do not write NVS or replace local
 test/MQTT defaults. Existing sound indices and blob layouts are retained. The

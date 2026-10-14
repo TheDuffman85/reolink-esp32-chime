@@ -21,6 +21,12 @@ The HTML pages use `Content-Encoding: gzip`; browsers decompress them automatica
 Use `curl --compressed` to read their HTML. Clients that explicitly decline gzip
 receive HTTP 406 for these pages. JSON API responses and logs remain uncompressed.
 
+Ordinary API traffic does not change WiFi modem sleep. The browser UI alone
+sends `X-WebUI-Active: 1` on visible-page requests to keep sleep temporarily
+disabled; serving an HTML UI page also starts this 60-second activity window.
+Without further UI activity the previous sleep mode is restored. OTA uploads
+retain their separate sleep-disabled behavior for throughput.
+
 Updates generally accept partial objects. Some routes reject unknown fields;
 others ignore them, so only send the fields documented for that endpoint.
 HTTP status 200 means the operation was accepted; pairing, WiFi connection and

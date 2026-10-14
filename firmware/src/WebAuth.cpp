@@ -112,7 +112,11 @@ bool credentialsValid() {
   loginThrottle.failure(clientAddress(), millis()); return false;
 }
 bool authenticated() {
-  if (credentialsValid()) return true;
+  if (credentialsValid()) {
+    // Only the visible browser UI opts in; API scripts/polling stay neutral.
+    if (server.header("X-WebUI-Active") == "1") noteWebActivity();
+    return true;
+  }
   errorReply(401, "Sign in required"); return false; // No Basic challenge: the UI has a login page.
 }
 bool mutationAuthorized() {

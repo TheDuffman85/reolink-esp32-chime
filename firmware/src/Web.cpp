@@ -22,6 +22,10 @@ String otaError;
 uint32_t otaStartedAt = 0;
 bool setupVisible = true;
 bool setupRequired = true;
+constexpr uint32_t WebIdleMs = 60000;
+bool webActive = false;
+uint32_t webActivityAt = 0;
+wifi_ps_type_t idleWifiSleep = WIFI_PS_MIN_MODEM;
 
 // Validate types/ranges before changing any live or persisted setting.
 bool integerField(JsonObjectConst obj, const char *name, int64_t min, int64_t max, int64_t &value) {
@@ -87,6 +91,24 @@ bool updateSettings(JsonObjectConst obj, Settings &next) {
 }
 }
 
+void noteWebActivity() {
+  webActivityAt = millis();
+  if (webActive) return;
+  idleWifiSleep = WiFi.getSleep();
+  WiFi.setSleep(false);
+  webActive = true;
+}
+
+void serviceWeb() {
+  server.handleClient();
+  // OTA owns the connection until completion/abort, even if it takes longer
+  // than the activity window. Unsigned subtraction also handles millis wrap.
+  if (webActive && !otaStarted && uint32_t(millis() - webActivityAt) >= WebIdleMs) {
+    WiFi.setSleep(idleWifiSleep);
+    webActive = false;
+  }
+}
+
 void jsonReply(int status, const JsonDocument &doc) {
   String body; serializeJson(doc, body);
   server.sendHeader("Cache-Control", "no-store");
@@ -116,8 +138,9 @@ void registerWeb() {
     uiPrefs.end();
   } else storageOk = false;
   restartRadio();
-  const char *headers[] = {"X-CSRF-Token", "Cookie", "Accept-Encoding"}; server.collectHeaders(headers, 3);
+  const char *headers[] = {"X-CSRF-Token", "Cookie", "Accept-Encoding", "X-WebUI-Active"}; server.collectHeaders(headers, 4);
   const auto page = [](const uint8_t *compressed, size_t size) {
+    noteWebActivity(); // Wake before sending the large HTML response.
     server.sendHeader("Cache-Control", "no-store");
     server.sendHeader("Vary", "Accept-Encoding");
     server.sendHeader("X-Content-Type-Options", "nosniff");
@@ -550,9 +573,10 @@ void registerWeb() {
       errorReply(400,"Expected multipart firmware upload"); return;
     }
     otaAuthorized=false;
+    noteWebActivity();
     if (!otaStarted || otaError.length() || Update.hasError()) {
       errorReply(400,otaError.length()?otaError.c_str():"Firmware update failed");
-      otaStarted=false; WiFi.setSleep(true); gong.inhibit(false); restartRadio(); initLink(true); return;
+      otaStarted=false; gong.inhibit(false); restartRadio(); initLink(true); return;
     }
     messageReply("Firmware updated; rebooting"); restartAt=millis()+500;
   }, []() {
@@ -561,10 +585,8 @@ void registerWeb() {
       otaAuthorized=credentialsValid() && server.header("X-CSRF-Token")==csrf;
       otaStarted=false; otaError="";
       if (!otaAuthorized) return;
+      noteWebActivity();
       rfLink.cancel(millis()); gong.inhibit(true); radio.pause();
-      // Modem sleep holds received data until the next beacon and slows
-      // the upload to a crawl; the chime restarts afterwards anyway.
-      WiFi.setSleep(false);
       if (!upload.filename.endsWith(".bin")) { otaError="Upload a firmware .bin file"; return; }
       otaStarted=Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH); otaStartedAt=millis();
       if (!otaStarted) otaError=String("Could not open OTA partition: ")+Update.errorString();
@@ -577,7 +599,7 @@ void registerWeb() {
         otaError.length()?", ":"", otaError.c_str());
     } else if (upload.status==UPLOAD_FILE_ABORTED && otaAuthorized) {
       Update.abort(); otaAuthorized=false; otaStarted=false; otaError="Upload aborted";
-      WiFi.setSleep(true); gong.inhibit(false); restartRadio(); initLink(true);
+      noteWebActivity(); gong.inhibit(false); restartRadio(); initLink(true);
     }
   });
   // {"mute":true|false} or {"mute_minutes":1-1440 (0 ends a timed mute)}.
