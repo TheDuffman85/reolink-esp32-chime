@@ -160,8 +160,14 @@ Schema-1 profiles migrate as passive. Separate NVS namespaces hold app config
 (`chimeapp`), gong (`gongx`), GPIO (`pins`), permanent mute (`mute`), authentication
 (`auth`), integrations (`integrations`), ring history (`ringlog`), receiver (`radio`),
 automatic trim (`afc`), WiFi mode (`wifi`) and UI preferences (`webui`, with
-Setup visibility in the `setup` key).
-Setup hides after Finish and can be shown again under Settings → General.
+Setup visibility in `setup` and initial completion in `init_done`).
+Until initial setup finishes, the UI exposes only Setup, overriding saved browser
+page preferences even after pairing or a restart. Finish saves sound/wiring and
+any requested sign-in settings, then marks setup complete and unlocks the other
+pages. Failed saves keep the review available for retry. Setup hides after Finish
+and can be shown again under Settings → General without locking navigation.
+Upgrades migrate an existing hidden wizard as complete and a visible wizard as
+unfinished; older paired installations without a visibility preference stay complete.
 Secrets are in ordinary NVS; settings GETs omit passwords/keys. Gong is the default for new
 configurations. Public modes are 0 Audio, 1 Gong and 2 None; Audio has a separate
 method (0 PWM, 1 DAC) in the `gongx/audioout` NVS key, remembered across mode
@@ -226,6 +232,9 @@ node firmware/tools/screenshots.cjs
 `SCREENSHOT_BROWSER_EXE` selects Chromium. The generator renders the embedded
 HTML, intercepts requests, uses synthetic fixtures, checks JavaScript errors,
 dialogs and overflow at 390/768/1100 px, and writes PNGs plus a UI hash manifest.
+The initial setup captures show all five steps with only Setup available and
+completion with Home, Sound and Settings unlocked. Checks cover saved browser
+pages, pairing, reloads, failed Finish saves and reopening Setup after completion.
 See [image documentation](docs/README.md).
 
 Pairing/join/rejoin, RF/CRC and press/Test reception have been validated on the

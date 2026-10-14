@@ -20,6 +20,7 @@ bool otaAuthorized = false;
 String otaError;
 uint32_t otaStartedAt = 0;
 bool setupVisible = true;
+bool setupRequired = true;
 
 // Validate types/ranges before changing any live or persisted setting.
 bool integerField(JsonObjectConst obj, const char *name, int64_t min, int64_t max, int64_t &value) {
@@ -101,13 +102,16 @@ void registerWeb() {
   static bool registered = false;
   if (registered) return;
   registered = true;
-  // Preserve first-run visibility even if pairing finishes before the wizard.
-  // Older, already-paired installations start with the wizard hidden.
+  // Preserve first-run setup until Finish, even after pairing or a restart.
+  // Migrate hidden wizards as complete; older paired installations stay hidden.
   Preferences uiPrefs;
   radio.pause();
   if (uiPrefs.begin("webui", false)) {
     setupVisible = uiPrefs.getBool("setup", !settings.paired);
     if (!uiPrefs.isKey("setup") && !uiPrefs.putBool("setup", setupVisible)) storageOk = false;
+    setupRequired = !uiPrefs.getBool("init_done", !setupVisible);
+    if (!uiPrefs.isKey("init_done") && !uiPrefs.putBool("init_done", !setupRequired)) storageOk = false;
+    if (setupRequired) setupVisible = true;
     uiPrefs.end();
   } else storageOk = false;
   restartRadio();
@@ -138,16 +142,18 @@ void registerWeb() {
       errorReply(400,"Expected {visible: true or false}"); return;
     }
     const bool visible = doc["visible"].as<bool>();
-    if (visible != setupVisible) {
+    if (visible != setupVisible || (!visible && setupRequired)) {
       if (otaStarted || restartAt || rfLink.busy()) { errorReply(409,"Wait for the update or radio handshake to finish"); return; }
       Preferences prefs;
       radio.pause();
       const bool opened = prefs.begin("webui", false);
-      const bool saved = opened && prefs.putBool("setup", visible)==1;
+      const bool saved = opened && prefs.putBool("setup", visible)==1 &&
+        (visible || !setupRequired || prefs.putBool("init_done", true)==1);
       if (opened) prefs.end();
       restartRadio();
       if (!saved) { storageOk=false; errorReply(500,"Could not save Setup visibility"); return; }
       setupVisible=visible;
+      if (!visible) setupRequired=false;
     }
     doc["visible"]=setupVisible; jsonReply(200,doc);
   });
@@ -170,6 +176,7 @@ void registerWeb() {
     doc["pairing"]=rfLink.state(); doc["profile"]=settings.profile;
     doc["paired"]=settings.paired; doc["joined"]=rfLink.profileReady();
     doc["setup_visible"]=setupVisible;
+    doc["setup_required"]=setupRequired;
     doc["node_id"]=hex32(settings.nodeId);
     doc["identity_compatible"]=chime::compatibleNodeId(settings.nodeId);
     doc["transmitted"]=transmitted; doc["transmit_errors"]=transmitErrors;

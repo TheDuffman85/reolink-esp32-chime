@@ -79,6 +79,7 @@ Returns a flat status object, plus the nested `mute` object:
 | `rings`, `last_ring_ms`, `ring_seq`, `gong_active`, `gong_ready`, `storage_ok` | Ring counters, last uptime or null, output and storage state |
 | `auth_enabled`, `auth_user` | Authentication state |
 | `setup_visible` | Device-wide Setup tab visibility, persisted across restarts |
+| `setup_required` | Initial setup is unfinished; only the Setup page is available until Finish |
 | `mute` | `{active, permanent, remaining_s}`; remaining seconds rounded up |
 | `time_synced`, `epoch`, `mqtt` | Clock state, UTC seconds or null and MQTT connection state |
 
@@ -247,15 +248,20 @@ shows the selected Audio method.
 
 ## Setup visibility
 
-`GET /api/status` includes `setup_visible`.
+`GET /api/status` includes `setup_visible` and `setup_required`.
 
 ### POST `/api/setup`
 
 Accepts exactly `{"visible":true}` or `{"visible":false}` and returns the saved
 `{visible}` value. Authentication and CSRF checks apply. The preference persists
 on the chime across restarts and applies to every browser; no reboot is needed.
-New devices show Setup until Finish. Existing paired installations default to
-hidden when upgrading. Settings → General can show or hide the tab explicitly.
+New devices expose only the Setup page until Finish, even after pairing,
+reloads or restarts. Saving `{"visible":false}` also marks initial setup complete
+and unlocks the other pages. This completion flag persists independently of
+visibility: showing Setup again does not lock navigation. Existing paired
+installations default to hidden and complete when upgrading; an existing visible
+wizard remains unfinished. Settings → General can show or hide the tab explicitly
+after initial setup is complete.
 The wizard hides only after sound/wiring and any requested authentication saves
 succeed. A failed save keeps the final review available for retry. WiFi and
 pairing remain independently available in Settings while Setup is hidden.

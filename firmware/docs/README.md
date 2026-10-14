@@ -19,6 +19,12 @@ The references are stored locally and do not represent a photograph of the compl
 
 ## Current embedded UI screenshots
 
+Initial setup exposes only Setup until Finish successfully saves sound, wiring
+and any requested sign-in settings. Pairing, reloads and restarts do not unlock
+the other pages. After completion, Home, Sound and Settings become available;
+reopening Setup later keeps those pages available. The README's setup images
+show this initial workflow. Other Setup captures show the reopened wizard.
+
 The Sound and Setup captures show all ten numbered melodies and gong patterns.
 Doorbell rings follow the Reolink ringtone slot; the local choice sets the
 default for web/button tests and MQTT plays. The audio sounds are synthesized
@@ -26,6 +32,12 @@ alternatives, as explained in the [original firmware audit](vendor-sounds.md).
 
 | File | View |
 |---|---|
+| `images/ui-initial-setup-desktop.png`, `images/ui-initial-setup-mobile.png` | Initial step 1: unconfigured WiFi, only Setup in navigation |
+| `images/ui-initial-pairing-desktop.png`, `images/ui-initial-pairing-mobile.png` | Initial step 2: pairing after joining WiFi, only Setup available |
+| `images/ui-initial-wiring-desktop.png`, `images/ui-initial-wiring-mobile.png` | Initial step 3: Gong sound/output wiring; advanced settings become available after Finish |
+| `images/ui-initial-signin-desktop.png`, `images/ui-initial-signin-mobile.png` | Initial step 4: optional sign-in with masked dummy credentials |
+| `images/ui-initial-review-desktop.png`, `images/ui-initial-review-mobile.png` | Initial step 5: review before saving, only Setup available |
+| `images/ui-initial-complete-desktop.png`, `images/ui-initial-complete-mobile.png` | Initial setup finished: choices saved, Home/Sound/Settings unlocked and Setup tab hidden |
 | `images/web-status.png` | Home: status, Mute/Play chime and ring log |
 | `images/web-sound.png` | Sound: Audio mode with PWM output, ten numbered melodies, volume, extra relay pulse and LED |
 | `images/web-sound-dac.png` | Sound: Audio mode with DAC output, the same ten melodies and level |
@@ -87,11 +99,17 @@ sign-in off/on, Skip preserving existing settings, password confirmation,
 keeping saved passwords, and recovery from a failed authentication save.
 Setup melody/pattern drafts survive status/settings refreshes. Audio previews
 check the pending extra-relay choice and pulse length, and a DAC method remembered
-in Gong selects a valid DAC GPIO when switching to Audio. One intentional `/api/auth` HTTP 500 response tests retry handling.
+in Gong selects a valid DAC GPIO when switching to Audio. Intentional `/api/auth`
+and `/api/setup` HTTP 500 responses test retry handling.
 The checks also cover Setup hiding only after successful Finish, showing/hiding
 it in General, preference persistence on reload, ignoring a stale saved Setup
 tab, fresh-device onboarding, direct WiFi connection/pairing in Settings, and
 recovering an unpaired device while Setup stays hidden.
+Initial setup overrides saved Home, Sound, Settings, Debug and Setup preferences.
+The checks verify that pages remain hidden while status loads, that pairing and
+reloads preserve setup-only navigation, that blocked navigation preserves drafts,
+that a failed completion save keeps setup locked, and that successful Finish
+unlocks the other pages. Showing Setup again must preserve normal navigation.
 All other JavaScript/console errors and unexpected
 requests are rejected. All network requests are intercepted, including the UI's automatic
 POST `/api/pins/check` validation; no device settings are saved and no device is

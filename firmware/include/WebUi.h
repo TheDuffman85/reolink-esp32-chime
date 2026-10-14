@@ -27,6 +27,7 @@ header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px so
 nav{position:fixed;bottom:0;left:0;right:0;z-index:6;background:var(--panel);border-top:1px solid var(--line);display:flex;justify-content:center;padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
 nav button{flex:1;max-width:140px;background:none;border:0;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;font:inherit;font-size:.75rem;cursor:pointer;border-radius:12px}
 nav button.hidden{display:none}.settings-flow .stepper-title,.settings-flow #pBack{display:none}
+.ui-loading #nav,.ui-loading main{display:none}
 nav button svg{width:22px;height:22px}nav button.on{color:var(--accent);background:var(--panel2)}
 @media (min-width:860px){body{padding-bottom:24px}nav{position:static;border:0;border-bottom:1px solid var(--line);background:var(--bg);gap:6px}nav button{flex-direction:row;gap:8px;font-size:.9rem;max-width:none;flex:none;padding:8px 14px}nav button svg{width:18px;height:18px}}
 main{max-width:1080px;margin:auto;padding:16px}.tab{display:none;animation:fade .2s}.tab.on{display:block}@keyframes fade{from{opacity:0;transform:translateY(4px)}}
@@ -103,7 +104,7 @@ dialog.modal form{padding:22px}dialog.modal h2{font-size:1.15rem;margin:0 0 6px}
 .spinner{width:40px;height:40px;border:4px solid var(--line);border-top-color:var(--accent);border-radius:50%;margin:2px auto 4px;animation:spin .9s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
 button.dangerbtn{background:#dc2626;border-color:#dc2626;color:#fff;font-weight:600}button.dangerbtn:hover{filter:brightness(1.08)}
 .hidden{display:none!important}.muted{color:var(--muted)}.mono{font-family:ui-monospace,monospace}.check{display:inline-flex;gap:6px;align-items:center;color:var(--muted);font-size:.85rem}.check input{width:auto}
-</style></head><body>
+</style></head><body class="ui-loading">
 <svg width="0" height="0" style="position:absolute"><defs>
 <symbol id="i-bell" viewBox="0 0 24 24"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1Z"/></symbol>
 <symbol id="i-home" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z"/></symbol>
@@ -201,7 +202,7 @@ button.dangerbtn{background:#dc2626;border-color:#dc2626;color:#fff;font-weight:
 <label class="switch hidden" id="wizExtraField"><div>Extra relay pulse<small>Also switch a relay while the melody plays.</small></div><input type="checkbox" id="wizExtraRelay"></label>
 <p class="sub" id="wizWireNote" style="margin:8px 0 0"></p><div id="wizWireIssues" role="status" aria-live="polite"></div>
 </div>
-<div class="row"><button class="small ghost" id="wizAdvanced">Advanced wiring</button><span class="muted" style="font-size:.85rem">Radio, LED and button GPIOs</span></div>
+<div class="row" id="wizAdvancedRow"><button class="small ghost" id="wizAdvanced">Advanced wiring</button><span class="muted" style="font-size:.85rem">Radio, LED and button GPIOs</span></div>
 <div class="btnbar wiz"><button class="ghost left" id="sBack">Back</button><button class="primary" id="sNext">Continue</button></div></div>
 <div id="wiz3" class="hidden"><div class="stepper-title">Step 4 of 5 · Optional</div><h2>Protect your chime</h2><p class="sub">Choose whether this page requires sign-in. You can change this later under Settings → Sign-in.</p>
 <label class="switch"><div>Enable sign-in<small>Use your own user name and password to open the chime interface.</small></div><input type="checkbox" id="wizAuthOn"></label>
@@ -339,19 +340,21 @@ function kv(el,rows){$(el).innerHTML=rows.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${
 function setDot(id,cls,pulse){const e=$(id);e.setAttribute('class',(e.dataset.base||'dot')+' '+cls+(pulse?' pulse':''));const pill=e.closest('.pill.status');if(pill)pill.title=pill.textContent.trim()}
 function linkState(){if(!S)return['…',''];const p=S.pairing;if(S.joined)return['Linked','ok'];if(['discovering','pair acknowledgement'].includes(p))return['Pairing…','warn'];if(['joining','join acknowledgement'].includes(p))return['Connecting…','warn'];if(S.paired)return['Not connected','bad'];return['Not paired','bad']}
 // Tabs
-function show(tab){if(tab==='setup'&&S&&S.setup_visible===false)tab='home';if(tab!=='settings')closeSettingsFlow();if(tab!=='setup'&&wizStep===4)wizStep=0;activeTab=tab;for(const b of $('nav').children)b.classList.toggle('on',b.dataset.tab===tab);for(const t of document.querySelectorAll('.tab'))t.classList.toggle('on',t.id==='tab-'+tab);try{localStorage.setItem('tab',tab)}catch(e){}if(tab==='setup')wizard(wizStep);if(tab==='settings')openSection(section,innerWidth>=860);scrollTo(0,0)}
+const initialSetup=()=>!!(S&&S.setup_required);
+function show(tab){if(!S)return;if(initialSetup()){if(tab!=='setup'&&activeTab==='setup')return;tab='setup'}else if(tab==='setup'&&S.setup_visible===false)tab='home';if(tab!=='settings')closeSettingsFlow();if(tab!=='setup'&&wizStep===4)wizStep=0;activeTab=tab;for(const b of $('nav').children)b.classList.toggle('on',b.dataset.tab===tab);for(const t of document.querySelectorAll('.tab'))t.classList.toggle('on',t.id==='tab-'+tab);try{localStorage.setItem('tab',tab)}catch(e){}if(tab==='setup')wizard(wizStep);if(tab==='settings')openSection(section,innerWidth>=860);scrollTo(0,0)}
 for(const b of $('nav').children)b.onclick=()=>show(b.dataset.tab);
 // Status
 async function refresh(){try{S=await api('/api/status');token=S.csrf;C=await api('/api/chime')}catch(e){$('heroTitle').textContent='Chime unreachable';$('heroText').textContent=e.message;$('hdrLink').textContent='Offline';setDot('hdrLinkDot','bad');$('hdrLinkPill').title='Offline';return}render()}
 function render(){if(!S||!C)return;const [lt,lc]=linkState(),busy=lc==='warn';$('hdrName').textContent=C.name||'Chime';document.title=C.name||'Chime';$('hdrLink').textContent=lt;setDot('hdrLinkDot',lc,busy);
 const ownAp=S.wifi_mode==='ap';$('hdrWifi').textContent=S.wifi_connected?S.ssid:ownAp?S.ap_name:S.ap_active?'Setup hotspot':'Offline';setDot('hdrWifiDot',S.wifi_connected||ownAp&&S.ap_active?'ok':S.ap_active?'warn':'bad');
 const incompatible=S.identity_compatible===false;$('identityNotice').classList.toggle('hidden',!incompatible);
-$('setupTab').classList.toggle('hidden',S.setup_visible===false);$('cfgSetupVisible').checked=S.setup_visible!==false;$('cfgSetupOpen').classList.toggle('hidden',S.setup_visible===false);
+for(const b of $('nav').children)b.classList.toggle('hidden',b.dataset.tab==='setup'?!initialSetup()&&S.setup_visible===false:initialSetup());$('cfgSetupVisible').checked=S.setup_visible!==false;$('cfgSetupOpen').classList.toggle('hidden',S.setup_visible===false);
+$('wizAdvancedRow').classList.toggle('hidden',initialSetup());if(initialSetup()&&activeTab!=='setup'){wizStep=S.wifi_configured?1:0;show('setup')}document.body.classList.remove('ui-loading');
 const needsSetup=!S.paired||incompatible;$('heroSetup').textContent=S.setup_visible===false?'Pair doorbell':'Start setup';$('heroSetup').classList.toggle('hidden',!needsSetup);
 $('heroTitle').textContent=incompatible?'Pair again to enable ringing':S.joined?'Ready':needsSetup?'Let’s set up your chime':lt;
 $('heroText').textContent=incompatible?'Remove the old chime in the Reolink app, then pair again under Settings → Doorbell.':S.joined?`“${C.name}” is listening. ${soundText()}.`:needsSetup?'Connect it to WiFi and pair it with your Reolink doorbell in a few steps.':busy?'Talking to the doorbell…':'The chime is paired but not connected. It retries after a restart, or reconnect it in Settings.';
 $('userWrap').classList.toggle('hidden',!S.auth_enabled);$('userName').textContent=S.auth_user||'';
-const M=S.mute||{},muted=!!M.active;$('hdrMute').classList.toggle('hidden',!muted);$('heroMuteText').textContent=muted?'Unmute':'Mute';
+const M=S.mute||{},muted=!!M.active;$('hdrMute').classList.toggle('hidden',!muted||initialSetup());$('heroMuteText').textContent=muted?'Unmute':'Mute';
 if(muted&&S.joined&&!incompatible){$('heroTitle').textContent='Muted';$('heroText').textContent=`Doorbell rings are logged but make no sound ${muteUntilText(M)}. Play chime still plays.`}
 if(!S.radio_ok){$('heroTitle').textContent='Radio error';$('heroText').textContent=`${S.radio_error||'The CC1101 radio does not respond'}. Check its wiring and power; details in Settings → Debug.`}
 $('heroIcon').style.color=!S.radio_ok?'var(--bad)':muted?'var(--warn)':S.joined?'var(--ok)':needsSetup?'var(--accent)':'var(--warn)';$('heroIcon').innerHTML=`<svg><use href="#i-${muted?'belloff':'bell'}"/></svg>`;
@@ -528,7 +531,7 @@ $('pinSave').onclick=async()=>{const r=await checkPins();if(!r||!r.ok)return;if(
 try{const s=await api('/api/pins',pinValue());pinsDirty=false;await loadPins();toast(s.message)}catch(e){toast(e.message,true)}};
 // WiFi and pairing reuse the same controls within their Settings sections.
 function closeSettingsFlow(){if(settingsStep<0)return;const step=settingsStep;settingsStep=-1;$('tab-setup').querySelector('.card').appendChild($('wiz'+step));$(step===0?'cfgWifiTask':'cfgPairTask').classList.add('hidden');$('wNext').textContent=$('pNext').textContent='Continue'}
-function openSettingsFlow(step){closeSettingsFlow();openSection(step===0?'network':'doorbell');settingsStep=step;const host=$(step===0?'cfgWifiTask':'cfgPairTask');host.appendChild($('wiz'+step));host.classList.remove('hidden');$('wNext').textContent=$('pNext').textContent='Done';wizard(step);host.scrollIntoView({block:'start',behavior:'smooth'})}
+function openSettingsFlow(step){if(initialSetup())return;closeSettingsFlow();openSection(step===0?'network':'doorbell');settingsStep=step;const host=$(step===0?'cfgWifiTask':'cfgPairTask');host.appendChild($('wiz'+step));host.classList.remove('hidden');$('wNext').textContent=$('pNext').textContent='Done';wizard(step);host.scrollIntoView({block:'start',behavior:'smooth'})}
 // Setup wizard
 function wizard(step,passive){wizStep=step;for(let i=0;i<5;i++){$('wiz'+i).classList.toggle('hidden',i!==step);$('steps').children[i].className=i<step?'done':i===step?'on':''}
 if(step===0&&!passive){scan();const w=$('wifiNow');const ap=S&&S.wifi_mode==='ap';w.classList.toggle('hidden',!S||!S.wifi_connected&&!ap);if(ap)w.innerHTML=`The chime runs its own access point <b>${esc(S.ap_name)}</b>. Connecting to a network switches it to client mode.`;else if(S&&S.wifi_connected)w.innerHTML=`Connected to <b>${esc(S.ssid)}</b> (${S.ip}). Choose another network or press ${settingsStep===0?'Done':'Continue'}.`}
@@ -589,7 +592,7 @@ $('wizSoundLabel').textContent=wizType===1?'Strike pattern':'Melody';$('wizSound
 if(wizType===1)cards('melodies2',PATTERNS,wizPattern,i=>{wizPattern=i;wizardWireCheck()},wizardPreview);else if(isAudio(wizType))cards('melodies2',MELODIES,wizMelody,i=>{wizMelody=i;wizardWireCheck()},wizardPreview);
 drawWizardWiring()}
 $('wizAudioPin').onchange=()=>{wizAudioPin=+$('wizAudioPin').value;drawWizardWiring()};$('wizRelayPin').onchange=()=>{wizRelayPin=+$('wizRelayPin').value;drawWizardWiring()};$('wizRelayLow').onchange=()=>{wizRelayLow=$('wizRelayLow').value==='1';drawWizardWiring()};$('wizExtraRelay').onchange=()=>{wizExtraRelay=$('wizExtraRelay').checked;drawWizardWiring()};$('sName').oninput=wizardWireCheck;
-$('wizAdvanced').onclick=()=>{show('settings');openSection('advanced');$('pinRows').scrollIntoView({block:'start',behavior:'smooth'})};
+$('wizAdvanced').onclick=()=>{if(initialSetup())return;show('settings');openSection('advanced');$('pinRows').scrollIntoView({block:'start',behavior:'smooth'})};
 $('sBack').onclick=()=>wizard(1);$('sNext').onclick=()=>{if(!wizWireOk||wizWireBusy)return;wizReviewBody=wizardSoundBody();wizReviewPins=wizardPinMap();wizSetupSaved=false;wizard(3)};
 function wizardAuth(){if(!wizAuthInitialized){$('wizAuthOn').checked=!!(A&&A.enabled);$('wizAuthUser').value=A?A.username:'admin';$('wizAuthPass').value='';$('wizAuthConfirm').value='';wizAuthInitialized=true}wizardAuthView()}
 function wizardAuthError(){if(!$('wizAuthOn').checked)return'';const user=$('wizAuthUser').value.trim(),password=$('wizAuthPass').value,confirm=$('wizAuthConfirm').value;
@@ -645,7 +648,7 @@ const editing=()=>{const a=document.activeElement;return dirty||pinsDirty||authD
 async function tick(){if(document.hidden||ticking||restarting)return;ticking=true;try{await refresh();if(S){const restarted=lastUp&&S.uptime_ms<lastUp;lastUp=S.uptime_ms;
 if(restarted){toast('The chime restarted');logNext=0;logText='';await loadSettings();render()}else if(++ticks%5===0&&!editing()){await loadSettings();render()}}await pollDebug()}finally{ticking=false}}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick()});
-(async()=>{await refresh();await loadSettings();render();let t='home';try{t=localStorage.getItem('tab')||'home'}catch(e){}if(t==='debug'){t='settings';section='debug'}if(!$('tab-'+t))t='home';if(t==='setup'&&S&&S.setup_visible===false)t='home';if(S&&!S.paired&&S.setup_visible!==false){wizStep=S.wifi_configured?1:0;t='setup'}show(t);checkUpdatedVersion();setInterval(tick,2000)})();
+(async()=>{await refresh();await loadSettings();render();let t='home';try{t=localStorage.getItem('tab')||'home'}catch(e){}if(t==='debug'){t='settings';section='debug'}if(!$('tab-'+t))t='home';if(t==='setup'&&S&&S.setup_visible===false)t='home';if(initialSetup()||S&&!S.paired&&S.setup_visible!==false){wizStep=S.wifi_configured?1:0;t='setup'}show(t);checkUpdatedVersion();setInterval(tick,2000)})();
 </script></body></html>)HTML";
 
 // Sign-in page served at /login while sign-in is enabled. It posts to
