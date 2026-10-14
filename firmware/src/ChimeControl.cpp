@@ -5,8 +5,10 @@
 namespace chime {
 const char *const GongKindNames[GongKinds] = {"Audio", "Gong", "None"};
 const char *const AudioOutputNames[AudioOutputs] = {"PWM", "DAC"};
-const char *const MelodyNames[Melodies] = {"Ding dong", "Ascending", "Double beep"};
-const char *const PatternNames[Patterns] = {"Ding-dong", "Double", "Triple", "Long ring", "Insistent"};
+const char *const MelodyNames[Melodies] = {"Ding dong", "Ascending", "Double beep", "Descending", "Triple beep",
+  "Four-note chime", "Rising bell", "Falling bell", "Alternating", "Attention"};
+const char *const PatternNames[Patterns] = {"Ding-dong", "Double", "Triple", "Long ring", "Insistent",
+  "Slow double", "Slow triple", "Four strikes", "Two pairs", "Three pairs"};
 
 namespace {
 // Lower-case letters and digits only, so "Ding dong", "ding_dong" and
@@ -70,10 +72,10 @@ const char *applyChime(JsonObjectConst update, ChimeState &state) {
       if ((pick = chimeEnum(value, AudioOutputNames, AudioOutputs)) < 0) return "audio_output: PWM or DAC";
       next.audioOutput = uint8_t(pick);
     } else if (!strcmp(key, "melody")) {
-      if ((pick = chimeEnum(value, MelodyNames, Melodies)) < 0) return "melody: Ding dong, Ascending or Double beep";
+      if ((pick = chimeEnum(value, MelodyNames, Melodies)) < 0) return "melody: 0 to 9 or a melody name";
       next.melody = uint8_t(pick);
     } else if (!strcmp(key, "pattern")) {
-      if ((pick = chimeEnum(value, PatternNames, Patterns)) < 0) return "pattern: Ding-dong, Double, Triple, Long ring or Insistent";
+      if ((pick = chimeEnum(value, PatternNames, Patterns)) < 0) return "pattern: 0 to 9 or a pattern name";
       next.pattern = uint8_t(pick);
     } else if (!strcmp(key, "audio_level")) {
       if (!integer(value, 0, 100, number)) return "audio_level: 0 to 100";

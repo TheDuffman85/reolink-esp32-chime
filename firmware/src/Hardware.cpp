@@ -383,7 +383,8 @@ bool Gong::play(const GongRequest &request) {
   if ((request.type == GongType::Relay && pins.relay < 0) ||
       ((request.type == GongType::Pwm || request.type == GongType::Dac) && pins.audio < 0) ||
       (request.type == GongType::Dac && !chime::dacPin(pins.audio)) ||
-      request.tone.melody >= 3 || request.tone.volume > 100) return false;
+      request.tone.melody >= chime::Melodies || request.pattern >= chime::Patterns ||
+      request.tone.volume > 100) return false;
   return requests_ && !inhibited_ && xQueueSend(requests_, &request, 0) == pdTRUE;
 }
 void Gong::inhibit(bool value) {
@@ -434,8 +435,8 @@ void Gong::melody(const GongRequest &request) {
   } else {
     ledcSetup(0, 1000, 8); ledcAttachPin(pins.audio, 0); ledcWrite(0, 0);
   }
-  const uint16_t notes[3][4] = {{784,659,0,0},{523,659,784,1047},{880,0,880,0}};
-  const uint16_t durations[3][4] = {{240,520,0,0},{180,180,180,400},{180,100,180,100}};
+  const chime::Note *notes = chime::melodyScore(settings.melody);
+  const auto hasNote = [&](int i) { return i < chime::MaxNotes && notes[i].ms != 0; };
   const uint32_t start = millis();
   uint32_t noteStart = start, phase = 0;
   int note = 0;
@@ -443,8 +444,8 @@ void Gong::melody(const GongRequest &request) {
   relay(relayOn);
   const auto tone = [&]() {
     if (dac) return;
-    if (note < 4 && notes[settings.melody][note] && settings.volume) {
-      ledcWriteTone(0, notes[settings.melody][note]);
+    if (hasNote(note) && notes[note].hz && settings.volume) {
+      ledcWriteTone(0, notes[note].hz);
       ledcWrite(0, 128 * settings.volume / 100);
     } else ledcWrite(0, 0);
   };
@@ -452,15 +453,15 @@ void Gong::melody(const GongRequest &request) {
   while (!inhibited_) {
     const uint32_t now = millis();
     if (relayOn && uint32_t(now - start) >= settings.relayMs) { relay(false); relayOn = false; }
-    if (note < 4 && uint32_t(now - noteStart) >= durations[settings.melody][note]) {
+    if (hasNote(note) && uint32_t(now - noteStart) >= notes[note].ms) {
       ++note; noteStart = now; tone();
     }
-    if (note == 4 && !relayOn) break;
+    if (!hasNote(note) && !relayOn) break;
     if (dac) {
       // Five milliseconds of stereo samples; only the selected DAC is enabled.
       // Blocking DMA writes pace playback without a high-frequency software ISR.
       uint16_t samples[80 * 2];
-      const uint16_t hz = note < 4 ? notes[settings.melody][note] : 0;
+      const uint16_t hz = hasNote(note) ? notes[note].hz : 0;
       const uint32_t step = chime::audioPhaseStep(hz);
       for (size_t i = 0; i < 80; ++i) {
         samples[2*i] = samples[2*i+1] = chime::dacSample(phase, hz ? settings.volume : 0);
@@ -482,17 +483,10 @@ void Gong::melody(const GongRequest &request) {
 void Gong::pattern(const GongRequest &request) {
   // Each strike energises the gong coil for pulseMs. On a classic two-tone
   // gong, energising strikes "ding" and releasing lets the plunger hit "dong".
-  uint8_t strikes = 1; uint32_t on = request.pulseMs, off = request.gapMs;
-  switch (request.pattern) {
-    case 1: strikes = 2; break;                               // double
-    case 2: strikes = 3; break;                               // triple
-    case 3: on = min<uint32_t>(uint32_t(request.pulseMs) * 4, 3000); break; // long ring
-    case 4: strikes = 5; on = max<uint32_t>(request.pulseMs / 2, 50); off = max<uint32_t>(request.gapMs / 2, 100); break;
-    default: break;                                           // ding-dong
-  }
-  for (uint8_t i = 0; i < strikes; ++i) {
-    relay(true); const bool ok = wait(on); relay(false);
-    if (!ok || (i + 1 < strikes && !wait(off))) return;
+  const auto score = chime::strikeScore(request.pattern, request.pulseMs, request.gapMs);
+  for (uint8_t i = 0; i < score.count; ++i) {
+    relay(true); const bool ok = wait(score.onMs); relay(false);
+    if (!ok || (i + 1 < score.count && !wait(score.gaps[i]))) return;
   }
 }
 void Gong::task(void *self) {

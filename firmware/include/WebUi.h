@@ -145,10 +145,10 @@ button.dangerbtn{background:#dc2626;border-color:#dc2626;color:#fff;font-weight:
 <ul class="rings" id="rings"></ul></div></section>
 <!-- SOUND -->
 <section class="tab" id="tab-sound">
-<div class="card"><h2>Sound mode</h2><p class="sub">Choose what makes the sound when someone rings.</p><div class="choices" id="gongTypes"></div></div>
+<div class="card"><h2>Sound mode</h2><p class="sub">Choose what makes the sound when someone rings. Doorbell rings follow the selected Reolink ringtone: ten numbered slots map to ten melodies or gong patterns. The choices below set the default for local tests and MQTT plays.</p><div class="choices" id="gongTypes"></div></div>
 <div id="audioCards" class="hidden">
 <div class="card"><h2>Audio output</h2><p class="sub">Choose the output method for your amplifier. Both play the same melodies.</p><div class="choices" id="audioOutputs"></div><p class="sub" id="audioOutputHint" style="margin:12px 0 0"></p></div>
-<div class="card"><h2>Melody</h2><p class="sub">Plays through the selected PWM or DAC audio output when someone presses the doorbell. Tap ▶ to preview.</p><div class="choices" id="melodies"></div></div>
+<div class="card"><h2>Melody for local tests</h2><p class="sub">Synthesized alternatives to the Reolink sounds; the original recordings live in a separate sound chip. Plays through the selected PWM or DAC output. Tap ▶ to preview.</p><div class="choices" id="melodies"></div></div>
 <div class="card"><h2>Volume</h2><p class="sub">The audio level sets the maximum. The chime volume (also set in the Reolink app) scales it.</p>
 <label class="field"><span>Audio level: <b id="levelOut"></b>%</span><input type="range" id="level" min="0" max="100" step="5"></label>
 <div class="field"><span class="muted" style="display:block;font-size:.85rem;margin-bottom:6px">Chime volume</span><div class="row"><div class="seg" id="appVolume"></div><span class="spacer"></span><button id="previewVolume"><svg width="14" height="14"><use href="#i-play"/></svg>Preview at this volume</button></div></div></div>
@@ -157,7 +157,7 @@ button.dangerbtn{background:#dc2626;border-color:#dc2626;color:#fff;font-weight:
 <label class="field" id="relayMsField"><span>Relay pulse: <b id="relayMsOut"></b> ms</span><input type="range" id="relayMs" min="50" max="2000" step="50"></label></div>
 </div>
 <div id="relayCards">
-<div class="card"><h2>Strike pattern</h2><p class="sub">The relay energises the gong coil once per strike. On a classic two-tone gong, energising plays “ding” and releasing plays “dong”. Tap ▶ to try it.</p><div class="choices" id="patterns"></div></div>
+<div class="card"><h2>Strike pattern for local tests</h2><p class="sub">The relay energises the gong coil once per strike. On a classic two-tone gong, energising plays “ding” and releasing plays “dong”. Numbered patterns correspond to the doorbell ringtone slots. Tap ▶ to try it.</p><div class="choices" id="patterns"></div></div>
 <div class="card"><h2>Timing</h2><p class="sub">Most 8–12 V AC gongs need 200–400 ms per strike. Too short and the plunger does not reach the bar.</p>
 <label class="field"><span>Strike length: <b id="pulseOut"></b> ms</span><input type="range" id="pulse" min="50" max="2000" step="25"></label>
 <label class="field"><span>Pause between strikes: <b id="gapOut"></b> ms</span><input type="range" id="gap" min="100" max="3000" step="50"></label>
@@ -187,7 +187,7 @@ button.dangerbtn{background:#dc2626;border-color:#dc2626;color:#fff;font-weight:
 <ol class="howto"><li>In the <b>Reolink app</b>, open the doorbell → <b>Settings</b> → <b>Chime</b> → add a chime.</li><li>Wait until the app shows <b>“Searching…”</b>.</li><li>Press <b>Start pairing</b> below. The chime appears in the app as <b>Reolink Chime</b>.</li><li>Tap <b>Pair</b> in the app, then give the chime a name.</li></ol>
 <div class="phases" id="phases"></div><div class="progress"><div id="pairBar"></div></div><p class="sub" id="pairText" style="margin-top:8px">Ready.</p>
 <div class="btnbar wiz"><button class="ghost left" id="pBack">Back</button><button class="hidden" id="pCancel">Cancel</button><button id="pStart"><svg width="16" height="16"><use href="#i-link"/></svg><span>Start pairing</span></button><button id="pNext">Continue</button></div></div>
-<div id="wiz2" class="hidden"><div class="stepper-title">Step 3 of 5</div><h2>Make it yours</h2><p class="sub">The name appears in the Reolink app. Pick how the chime sounds.</p>
+<div id="wiz2" class="hidden"><div class="stepper-title">Step 3 of 5</div><h2>Make it yours</h2><p class="sub">The name appears in the Reolink app. Doorbell rings follow its selected ringtone slot. Pick an output and a default sound for local tests and MQTT plays.</p>
 <label class="field"><span>Chime name</span><input id="sName" maxlength="32"></label>
 <div class="field"><span>Sound mode</span><div class="choices" id="wizTypes"></div></div>
 <div class="field hidden" id="wizAudioField"><span>Audio output</span><div class="choices" id="wizAudioOutputs"></div></div>
@@ -318,7 +318,7 @@ button.dangerbtn{background:#dc2626;border-color:#dc2626;color:#fff;font-weight:
 <div class="btnbar"><button value="cancel" class="ghost left" id="dlgCancel">Cancel</button><button value="ok" class="primary" id="dlgOk">OK</button></div></form></dialog>
 <script>
 const $=id=>document.getElementById(id);let token='',S=null,C=null,G=null,dirty=false,logNext=0,logText='',pairStarted=0,scanTimer=0,wifiTimer=0,activeTab='home',settingsStep=-1,wizStep=0,soundPick=0,appVol=4;
-const MELODIES=[['Ding dong','Classic two-tone'],['Ascending','Four rising notes'],['Double beep','Short and clear']];
+const MELODIES=[['Ding dong','Classic two-tone'],['Ascending','Four rising notes'],['Double beep','Short and clear'],['Descending','Four falling notes'],['Triple beep','Three clear beeps'],['Four-note chime','A four-note bell phrase'],['Rising bell','Three spaced rising notes'],['Falling bell','Three spaced falling notes'],['Alternating','Five alternating notes'],['Attention','Two pairs of high and low notes']].map(([n,d],i)=>[`${i+1}. ${n}`,d]);
 const PAIR_PHASES=[['discovering','Announcing the chime to the doorbell'],['pair acknowledgement','Exchanging the pairing key'],['joining','Joining the doorbell'],['join acknowledgement','Confirming the session'],['joined','Linked']];
 // Modal dialogs: ask() resolves true for OK; notify() has a single button.
 // Esc and a click on the backdrop cancel. Destructive actions focus Cancel.
@@ -398,9 +398,9 @@ function typeCards(el,selected,onPick){cards(el,TYPE_ORDER.map(i=>TYPES[i]),TYPE
 function typeAvailable(type){if(!X)return true;const ok=type===1?X.relay_available:type===0?X.pwm_available:true;if(!ok)toast(type===1?'Assign a relay GPIO under Settings → Advanced → Wiring first.':'Assign an Audio output GPIO under Settings → Advanced → Wiring first.',true);return ok}
 function audioAvailable(output){if(!X)return true;const ok=output===1?X.dac_available:X.pwm_available;if(!ok)toast(output===1?'DAC requires Audio output GPIO25 or GPIO26. Set it under Settings → Advanced → Wiring first.':'Assign an Audio output GPIO under Settings → Advanced → Wiring first.',true);return ok}
 function audioOutputCards(el,selected,onPick,allowUnwired=false){cards(el,OUTPUTS,selected,i=>{if(i===selected)return;if(!allowUnwired&&!audioAvailable(i))return false;onPick(i)})}
-const soundText=()=>!X?'Rings play your chime sound':X.type===2?'Rings are silent (mode None) and only logged':X.type===1?'Rings play the gong ('+PATTERNS[X.pattern][0].toLowerCase()+')':'Rings play '+MELODIES[G?G.melody:0][0].toLowerCase();
-const PATTERNS=[['Ding-dong','One strike'],['Double','Two strikes'],['Triple','Three strikes'],['Long ring','One long strike, for bells'],['Insistent','Five quick strikes']];
-const MEL2PAT=[0,2,1],PAT2MEL=[0,2,1,0,2];let X=null,gongType=1,audioPick=0,patternPick=0;
+const soundText=()=>!X?'Rings follow the doorbell ringtone':X.type===2?'Rings are silent (mode None) and only logged':X.type===1?'Gong patterns follow the doorbell ringtone':'Audio melodies follow the doorbell ringtone';
+const PATTERNS=[['Ding-dong','One strike'],['Double','Two strikes'],['Triple','Three strikes'],['Long ring','One long strike, for bells'],['Insistent','Five quick strikes'],['Slow double','Two strikes with a longer gap'],['Slow triple','Three strikes with longer gaps'],['Four strikes','Four evenly spaced strikes'],['Two pairs','Two pairs of strikes'],['Three pairs','Three pairs of strikes']].map(([n,d],i)=>[`${i+1}. ${n}`,d]);
+let X=null,gongType=1,audioPick=0,patternPick=0;
 function cards(el,list,selected,onPick,onPlay){$(el).innerHTML=list.map(([n,d],i)=>`<div class="choice${i===selected?' on':''}" data-i="${i}"><div><b>${n}</b><small>${d}</small></div><span class="spacer"></span>${onPlay?`<button class="small ghost" data-play="${i}" aria-label="Preview ${n}"><svg width="14" height="14"><use href="#i-play"/></svg></button>`:''}</div>`).join('');
 for(const c of $(el).children)c.onclick=e=>{const p=e.target.closest('[data-play]');if(p){onPlay(+p.dataset.play);return}if(onPick(+c.dataset.i)===false)return;for(const o of $(el).children)o.classList.toggle('on',o===c)}}
 const playMelody=(i,output=audioPick)=>act('/api/gong/test',{type:0,audio_output:output,melody:i,volume:Math.floor(+$('level').value*appVol/4),extra_relay:$('relay').checked,extra_relay_ms:+$('relayMs').value},'Playing preview');
@@ -409,7 +409,7 @@ function melodyCards(el,selected,onPick,output=audioPick){cards(el,MELODIES,sele
 function showType(){$('audioCards').classList.toggle('hidden',!isAudio(gongType));$('relayCards').classList.toggle('hidden',gongType!==1);$('noneCards').classList.toggle('hidden',gongType!==2);$('noRelay').classList.toggle('hidden',!X||X.relay_available);drawAudioOutput()}
 function loadSound(){if(!G||!C||!X)return;soundPick=G.melody;appVol=C.volume;gongType=X.type;audioPick=X.audio_output;patternPick=X.pattern;$('level').value=G.volume;$('levelOut').textContent=G.volume;$('led').checked=!!C.led;$('relay').checked=G.relay;$('relayMs').value=G.relay_ms;$('relayMsOut').textContent=G.relay_ms;$('relayMsField').classList.toggle('hidden',!G.relay);
 $('pulse').value=X.pulse_ms;$('pulseOut').textContent=X.pulse_ms;$('gap').value=X.gap_ms;$('gapOut').textContent=X.gap_ms;
-typeCards('gongTypes',gongType,i=>{if(i===gongType)return;if(!typeAvailable(i))return false;if(i===1&&isAudio(gongType))patternPick=MEL2PAT[soundPick];else if(isAudio(i)&&gongType===1)soundPick=PAT2MEL[patternPick];gongType=i;dirty=true;drawPicks();showType()});drawPicks();segVol();showType()}
+typeCards('gongTypes',gongType,i=>{if(i===gongType)return;if(!typeAvailable(i))return false;if(i===1&&isAudio(gongType))patternPick=soundPick;else if(isAudio(i)&&gongType===1)soundPick=patternPick;gongType=i;dirty=true;drawPicks();showType()});drawPicks();segVol();showType()}
 function drawAudioOutput(){audioOutputCards('audioOutputs',audioPick,i=>{audioPick=i;dirty=true;drawPicks();drawAudioOutput()});$('audioOutputHint').textContent=audioPick===1?'Uses the shared Audio output GPIO (25 or 26 only). Move or disable the Relay pin if it uses the same GPIO.':'Uses the shared Audio output GPIO. Configure it under Settings → Advanced → Wiring.'}
 function drawPicks(){melodyCards('melodies',soundPick,i=>{soundPick=i;dirty=true});cards('patterns',PATTERNS,patternPick,i=>{patternPick=i;dirty=true},playPattern)}
 function segVol(){$('appVolume').innerHTML=[0,1,2,3,4].map(v=>`<button type="button" class="${v===appVol?'on':''}">${v===0?'Mute':v}</button>`).join('');[...$('appVolume').children].forEach((b,v)=>b.onclick=()=>{appVol=v;dirty=true;segVol()})}
@@ -555,7 +555,7 @@ let pBandBusy=false;$('pBand').onchange=async()=>{const hz=+$('pBand').value;if(
 $('pStart').onclick=async()=>{try{await api('/api/pair/start',{});pairStarted=Date.now();refresh()}catch(e){toast(e.message,true)}};
 $('pCancel').onclick=async()=>{pairStarted=0;await act('/api/pair/cancel',{},'Pairing cancelled')};$('pBack').onclick=()=>wizard(0);$('pNext').onclick=()=>settingsStep===1?closeSettingsFlow():wizard(2);
 $('dbgPair').onclick=async()=>{await act('/api/pair/start');pairStarted=Date.now()};$('dbgCancel').onclick=()=>act('/api/pair/cancel');$('dbgTest').onclick=()=>act('/api/gong/test',{});
-// Gong type and its sounds; switching type maps the melody to a similar pattern.
+// Switching mode preserves the numbered doorbell sound slot.
 let wizType=1,wizMelody=0,wizPattern=0,wizAudioPick=0,wizAudioPin=25,wizRelayPin=26,wizRelayLow=false,wizExtraRelay=false;
 let wizReviewBody=null,wizReviewPins=null,wizSetupSaved=false;
 let wizReviewAuth=null,wizAuthInitialized=false;
@@ -583,7 +583,7 @@ const map=wizardPinMap(),freed=P&&['audio','relay'].find(role=>P.saved[role]>=0&
 $('wizWireNote').textContent=(freed?`The unused ${freed==='audio'?'Audio output':'Relay'} assignment will be disconnected to free this GPIO. `:'')+'GPIO changes apply when you finish the last setup step, without a restart. Disconnect power before moving wires.';
 wizardWireCheck()}
 function wizSounds(){typeCards('wizTypes',wizType,i=>{if(i===wizType)return;
-if(i===1&&isAudio(wizType))wizPattern=MEL2PAT[wizMelody];else if(isAudio(i)&&wizType===1)wizMelody=PAT2MEL[wizPattern];wizType=i;setTimeout(wizSounds)});
+if(i===1&&isAudio(wizType))wizPattern=wizMelody;else if(isAudio(i)&&wizType===1)wizMelody=wizPattern;wizType=i;setTimeout(wizSounds)});
 $('wizAudioField').classList.toggle('hidden',!isAudio(wizType));audioOutputCards('wizAudioOutputs',wizAudioPick,i=>{wizAudioPick=i;if(i===1&&![25,26].includes(wizAudioPin))wizAudioPin=25;setTimeout(wizSounds)},true);
 $('wizSoundLabel').textContent=wizType===1?'Strike pattern':'Melody';$('wizSoundField').classList.toggle('hidden',wizType===2);
 if(wizType===1)cards('melodies2',PATTERNS,wizPattern,i=>{wizPattern=i;wizardWireCheck()},wizardPreview);else if(isAudio(wizType))cards('melodies2',MELODIES,wizMelody,i=>{wizMelody=i;wizardWireCheck()},wizardPreview);

@@ -274,8 +274,16 @@ Decrypted ring payload:
 
 Opcode `09` means ring. Byte +1 is unspecified and must not be required to
 equal zero. Bytes +2/+3 contain a music/ringtone parameter; they are neither
-padding nor an ACK field. The ESP32 records the parameter and plays its locally
-configured output, rather than reproducing the vendor's ringtone samples.
+padding nor an ACK field. The ESP32 accepts IDs 0–9 and selects the corresponding
+local melody or relay pattern for that ring, retaining the configured output
+mode, level, timings and app volume. It records both the ID and the selected
+sound. Local test/MQTT defaults are unchanged by received rings.
+
+The vendor playback table has ten entries. Although its opcode-9 handler
+admits ID 10, that lookup reads a byte of the following pointer array; the ESP32
+rejects it and other unsupported IDs before counting or playing a ring. Original
+audio is controlled through serial commands to a separate sound device, so
+the ESP32 uses synthesized alternatives. See [static firmware evidence](firmware/docs/vendor-sounds.md).
 
 The doorbell queues ten transmission rounds retaining the same sequence on
 repeats, with a requested approximately 10 ms delay between rounds. Actual RF

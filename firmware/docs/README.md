@@ -19,12 +19,17 @@ The references are stored locally and do not represent a photograph of the compl
 
 ## Current embedded UI screenshots
 
+The Sound and Setup captures show all ten numbered melodies and gong patterns.
+Doorbell rings follow the Reolink ringtone slot; the local choice sets the
+default for web/button tests and MQTT plays. The audio sounds are synthesized
+alternatives, as explained in the [original firmware audit](vendor-sounds.md).
+
 | File | View |
 |---|---|
 | `images/web-status.png` | Home: status, Mute/Play chime and ring log |
-| `images/web-sound.png` | Sound: Audio mode with PWM output, melodies, volume, extra relay pulse and LED |
-| `images/web-sound-dac.png` | Sound: Audio mode with DAC output, shared melodies and level |
-| `images/web-sound-relay.png` | Sound: Gong mode, strike patterns and timing |
+| `images/web-sound.png` | Sound: Audio mode with PWM output, ten numbered melodies, volume, extra relay pulse and LED |
+| `images/web-sound-dac.png` | Sound: Audio mode with DAC output, the same ten melodies and level |
+| `images/web-sound-relay.png` | Sound: Gong mode, ten numbered strike patterns and timing |
 | `images/web-sound-none.png` | Sound: mode None (silent) |
 | `images/web-muted.png` | Home while muted for 45 minutes |
 | `images/web-status-light.png` | Home in the light theme |
@@ -72,7 +77,9 @@ lands at the bottom and does not cover any controls. Every tab is checked at **3
 1100 px** for horizontal page overflow; scrolling within the packet table is
 intentional. Gong/Audio/None and both Audio methods are checked at each width. Preview
 requests are checked for the selected method in Sound and Setup; saving and
-reloading across mode changes preserves that method. The shared Audio GPIO
+reloading across mode changes preserves that method. Switching between Audio
+and Gong also preserves the numbered sound slot. Both catalogs are checked for ten choices, with previews of the last
+slot verified for PWM, DAC and Gong. The shared Audio GPIO
 selector and DAC pin restrictions are also checked. Setup is checked for
 validation failures, Back/Continue without saving, and live GPIO application
 only on the final Finish click. The five-step wizard also checks optional
@@ -111,10 +118,12 @@ NODE_PATH=/path/to/node_modules SCREENSHOT_BROWSER_EXE=/path/to/chromium node fi
 The generator replaces the `web-*.png` and `ui-*.png` files and screenshot
 manifest. Its synthetic version labels follow `firmware/version.json`.
 README images are copies of the verified captures named
-`readme-<version>-<view>.png`; the generator updates the README's versioned
-image paths on subsequent runs. These distinct URLs avoid stale cached images
-from earlier firmware screenshots. The manifest records each README image's
-source capture and firmware version.
+`readme-<version>-<ui-hash>-<view>.png`, where `ui-hash` is the first twelve
+characters of the embedded UI's SHA-256. The generator updates image links in
+the project README and screenshot gallery. These URLs refresh when the UI
+changes, even without a firmware version change, avoiding stale cached images.
+The manifest records each README image's source capture, UI hash and firmware
+version, plus the ten-slot and mode-switch checks.
 If the browser cannot launch under a restricted execution sandbox, use an
 approved local browser environment. Device firmware, OTA package and hardware
 pinout references are unaffected by screenshot generation.

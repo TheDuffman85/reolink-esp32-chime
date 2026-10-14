@@ -3,6 +3,7 @@
 #include "Auth.h"
 #include "ChimeControl.h"
 #include "Audio.h"
+#include "Protocol.h"
 #include "SetupSound.h"
 #include "RingLog.h"
 #include "WifiConfig.h"
@@ -200,7 +201,7 @@ void chimeTests() {
     R"({"type":"Buzzer"})", R"({"type":3})", R"({"type":"PWM"})", R"({"type":"DAC"})",
     R"({"audio_output":2})", R"({"audio_output":-1})", R"({"audio_output":"I2S"})",
     R"({"type":"Audio","audio_output":0.5})", R"({"audio_level":101})",
-    R"({"audio_level":0.5})", R"({"buzzer_level":50})", R"({"melody":"Siren"})", R"({"melody":3})", R"({"type":"relayx"})", R"({"pattern":""})",
+    R"({"audio_level":0.5})", R"({"buzzer_level":50})", R"({"melody":"Siren"})", R"({"melody":10})", R"({"pattern":10})", R"({"type":"relayx"})", R"({"pattern":""})",
     R"({"led":"maybe"})", R"({"led":2})", R"({"pulse_ms":49})", R"({"gap_ms":3001})",
     R"({"extra_relay_ms":2001})", R"({"mute_minutes":1441})", R"({"mute_minutes":-1})", R"({"mute":"soon"})", R"({"name":""})", R"({"name":"123456789012345678901234567890123"})",
     R"({"name":"a\u0001b"})", R"({"name":5})",
@@ -241,6 +242,55 @@ void chimeTests() {
   assert(!chimeField("", "1", 1, field));
   char longText[80]; memset(longText, 'x', sizeof(longText));
   assert(!chimeField("name", longText, sizeof(longText), field));
+
+  // Every doorbell slot is selectable and survives named MQTT state round trips.
+  for (uint8_t i = 0; i < DoorbellSounds; ++i) {
+    out.clear(); out["melody"] = i; out["pattern"] = i;
+    assert(!applyChime(out.as<JsonObjectConst>(), state));
+    assert(state.melody == i && state.pattern == i);
+    writeChime(state, out.to<JsonObject>());
+    ChimeState restored; assert(!applyChime(out.as<JsonObjectConst>(), restored));
+    assert(same(restored, state));
+  }
+}
+
+void soundTests() {
+  static_assert(Melodies == 10 && Patterns == 10, "V2 has ten ringtone slots");
+  // Parse actual plaintext ring commands before selecting the sound; includes
+  // the complete u16 range so an upper byte never aliases a valid slot.
+  for (uint32_t id = 0; id <= UINT16_MAX; ++id) {
+    uint8_t plain[] = {9, 0xA4, uint8_t(id), uint8_t(id >> 8)};
+    Ring ring{}; assert(ringPayload(plain, ring));
+    uint8_t melody = 2, pattern = 4;
+    assert(doorbellSound(ring.parameter, melody, pattern) == (id < DoorbellSounds));
+    if (id < DoorbellSounds) assert(melody == id && pattern == id);
+    else assert(melody == 2 && pattern == 4);
+  }
+  for (uint8_t i = 0; i < Melodies; ++i) {
+    const Note *notes = melodyScore(i);
+    assert(notes && notes[0].hz && notes[0].ms);
+    uint32_t duration = 0;
+    for (uint8_t n = 0; n < MaxNotes && notes[n].ms; ++n) {
+      assert(notes[n].hz < AudioSampleRate / 2);
+      duration += notes[n].ms;
+    }
+    assert(duration >= 400 && duration <= 3000);
+  }
+  assert(!melodyScore(Melodies) && !melodyScore(255));
+  // Legacy timing and grouped rhythms; protect long/quick pulse limits.
+  assert(strikeScore(0,300,700).count == 1);
+  assert(strikeScore(3,2000,700).onMs == 3000);
+  auto quick = strikeScore(4,50,100);
+  assert(quick.count == 5 && quick.onMs == 50 && quick.gaps[0] == 100);
+  assert(strikeScore(6,300,3000).gaps[0] == 3000);
+  for (uint8_t i = 0; i < Patterns; ++i) {
+    auto score = strikeScore(i,300,700);
+    assert(score.count >= 1 && score.count <= 6 && score.onMs >= 50 && score.onMs <= 3000);
+    for (uint8_t g = 0; g + 1 < score.count; ++g)
+      assert(score.gaps[g] >= 100 && score.gaps[g] <= 3000);
+  }
+  auto pairs = strikeScore(9,300,700);
+  assert(pairs.count == 6 && pairs.gaps[0] < pairs.gaps[1] && pairs.gaps[2] == pairs.gaps[0]);
 }
 
 const char *wifi(WifiConfig &config, const char *json) {
@@ -281,7 +331,7 @@ void wifiTests() {
 int main() {
   authTests();
   ringLogTests();
-  chimeTests(); setupSoundTests();
+  chimeTests(); setupSoundTests(); soundTests();
   wifiTests();
   std::cout << "Feature tests passed: session tokens, sign-in throttle, ring log image, MQTT chime settings, WiFi mode\n";
 }

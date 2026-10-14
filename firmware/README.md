@@ -172,6 +172,12 @@ in the ten-byte pin map. Ring history writes after three seconds of
 quiet reception/playback. Timed mute, packet history and text logs are RAM-only.
 Flash writes/OTA pause reception. Check dropped/error counts under WiFi load.
 
+`Sounds.h` defines ten synthesized melodies and ten relay patterns, selected per
+doorbell ring by music ID 0–9. Received IDs do not write NVS or replace local
+test/MQTT defaults. Existing sound indices and blob layouts are retained. The
+[vendor sound audit](docs/vendor-sounds.md) explains the ten-entry table,
+rejection of ID 10 and why original audio cannot be extracted from this controller.
+
 ## Host tests and fuzzing
 
 Requires g++, OpenSSL development headers (e.g. `libssl-dev`) and ArduinoJson

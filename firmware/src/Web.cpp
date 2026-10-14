@@ -41,7 +41,7 @@ bool updateSettings(JsonObjectConst obj, Settings &next) {
   if (!integerField(obj,"frequency_hz",chime::Eu868Min,chime::Ism915Max,hz) ||
       !chime::validFrequency(uint32_t(hz)) ||
       !integerField(obj,"trim",-128,127,trim) || !integerField(obj,"polarity",0,2,polarity) ||
-      !integerField(obj,"melody",0,2,melody) || !integerField(obj,"volume",0,100,volume) ||
+      !integerField(obj,"melody",0,chime::Melodies-1,melody) || !integerField(obj,"volume",0,100,volume) ||
       !integerField(obj,"relay_ms",50,2000,pulse)) return false;
   for (const char *key : {"relay", "open_wifi", "clear_profile"})
     if (!booleanField(obj,key)) return false;
@@ -293,7 +293,7 @@ void registerWeb() {
   server.on("/api/gong/test", HTTP_POST, []() {
     if (!mutationAuthorized()) return;
     // Optional overrides preview a sound without saving it: {"type":0-2,"audio_output":0-1,
-    // "melody":0-2,"volume":0-100,"pattern":0-4,"pulse_ms":50-2000,"gap_ms":100-3000}.
+    // "melody":0-9,"volume":0-100,"pattern":0-9,"pulse_ms":50-2000,"gap_ms":100-3000}.
     GongRequest request = gongRequest(4); uint8_t flags = 0, mode = gongx.type, output = gongAudioOutput;
     StaticJsonDocument<256> doc;
     const auto in = [&](const char *key, int lo, int hi) {
@@ -303,7 +303,7 @@ void registerWeb() {
       flags = chime::RingPreview;
       if (in("type",0,chime::GongKinds-1)) mode=doc["type"].as<int>();
       if (in("audio_output",0,chime::AudioOutputs-1)) output=doc["audio_output"].as<int>();
-      if (in("melody",0,2)) request.tone.melody=doc["melody"].as<int>();
+      if (in("melody",0,chime::Melodies-1)) request.tone.melody=doc["melody"].as<int>();
       if (in("volume",0,100)) request.tone.volume=doc["volume"].as<int>();
       if (doc["extra_relay"].is<bool>()) request.tone.relay=doc["extra_relay"].as<bool>();
       if (in("extra_relay_ms",50,2000)) request.tone.relayMs=doc["extra_relay_ms"].as<int>();

@@ -119,7 +119,7 @@ GET returns the saved values below plus `wifi_password_set`, `profile`,
 | `auto_trim` | Boolean | Automatic tuning can replace manual trim |
 | `rx_mode` | Integer 0/1 | CC1101 packet engine / ESP32 bit sampling |
 | `polarity` | Integer 0/1/2 | Auto / normal / inverted RX |
-| `melody` | Integer 0–2 | Local PWM/DAC melody |
+| `melody` | Integer 0–9 | Default local PWM/DAC test/MQTT melody |
 | `volume` | Integer 0–100 | **PWM/DAC audio level**, distinct from app volume |
 | `relay` | Boolean | Extra relay pulse in PWM/DAC modes |
 | `relay_ms` | Integer 50–2000 | Extra pulse length |
@@ -166,7 +166,7 @@ Audio level and exposes Sound mode plus a separate Audio output selector.
 |---|---|
 | `type` | 0 Audio, 1 Gong (default), 2 None/silent |
 | `audio_output` | 0 PWM (default), 1 DAC |
-| `pattern` | 0 Ding-dong, 1 Double, 2 Triple, 3 Long ring, 4 Insistent |
+| `pattern` | 0–9; see the [sound slot table](README.md#web-interface) |
 | `pulse_ms` | 50–2000 |
 | `gap_ms` | 100–3000 |
 
@@ -176,12 +176,18 @@ GPIO26. Invalid output wiring returns 409. Independent name, LED, volume and
 mute changes remain available if an optional output pin is disconnected. GET also returns `relay_available`,
 `pwm_available` and `dac_available` for the active GPIO map.
 
+Doorbell rings override the melody/pattern per ring with the transmitted music
+ID (0–9), without saving it as a local default. Ten synthesized melodies and
+ten gong patterns correspond to Reolink's ten slots; they are alternatives to
+the original audio. IDs outside 0–9 are ignored and shown in packet diagnostics.
+The ring event's `tone` retains the RF ID and `sound` identifies what played.
+
 ### POST `/api/gong/test`
 
 Empty body or `{}` tests saved output at full app volume without saving
 settings. Local tests bypass owner mute. A nonempty JSON object supplies
-temporary overrides: `type` 0–2, `audio_output` 0–1, `melody` 0–2, `volume` **0–100 audio level**,
-`pattern` 0–4, `pulse_ms` 50–2000, `gap_ms` 100–3000, `extra_relay` (boolean)
+temporary overrides: `type` 0–2, `audio_output` 0–1, `melody` 0–9, `volume` **0–100 audio level**,
+`pattern` 0–9, `pulse_ms` 50–2000, `gap_ms` 100–3000, `extra_relay` (boolean)
 and `extra_relay_ms` 50–2000. Audio previews use the selected extra relay
 settings; an enabled extra relay needs a Relay GPIO. Out-of-range preview
 fields are ignored; this route does not strictly reject malformed/unknown
@@ -432,8 +438,8 @@ events include `audio_output` (PWM or DAC); it is omitted for Gong/None events.
 |---|---|
 | `type` | 0–2 or Audio / Gong / None |
 | `audio_output` | 0–1 or PWM / DAC |
-| `melody` | 0–2 or Ding dong / Ascending / Double beep |
-| `pattern` | 0–4 or Ding-dong / Double / Triple / Long ring / Insistent |
+| `melody` | 0–9 or names from the [sound slot table](README.md#web-interface) |
+| `pattern` | 0–9 or names from the [sound slot table](README.md#web-interface) |
 | `volume` | 0–4 app volume |
 | `audio_level` | 0–100 PWM/DAC audio percentage |
 | `led`, `extra_relay`, `mute` | Boolean, 0/1, ON/OFF or true/false text |

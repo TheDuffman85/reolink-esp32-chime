@@ -5,7 +5,7 @@ the Reolink app, then use an existing low-voltage gong through a relay, PWM or D
 through an external amplifier, or silent MQTT events. The doorbell communicates directly with the
 CC1101; WiFi provides setup, control, updates and Home Assistant integration.
 
-![Web interface: Home](firmware/docs/images/readme-1.0.25-home.png)
+![Web interface: Home](firmware/docs/images/readme-1.0.25-c0a431e6db8b-home.png)
 
 The screenshots render the firmware's embedded UI with **synthetic demonstration
 data** and the firmware version from `firmware/version.json`. They do not show
@@ -23,8 +23,8 @@ presets have not been validated. Audible PWM/DAC output and physical relay
 timing still need hardware verification.
 
 - Normal Reolink pairing with an individual AES key; saved credentials and automatic rejoin.
-- Three PWM/DAC melodies: Ding dong, Ascending and Double beep.
-- Five relay patterns: Ding-dong, Double, Triple, Long ring and Insistent.
+- Ten PWM/DAC melodies and ten relay patterns, matching Reolink's ten ringtone slots.
+- Doorbell rings automatically follow the ringtone selected for that event in Reolink.
 - Silent mode, permanent/timed mute, optional extra relay pulse and configurable LED.
 - Mobile-friendly web UI, light/dark/system theme and optional sign-in.
 - 2.4 GHz WiFi onboarding, standalone access point and WiFi-off operation.
@@ -33,8 +33,10 @@ timing still need hardware verification.
 - Configurable GPIOs, automatic frequency trim, two RF receivers and web OTA.
 - PlatformIO build, portable host tests and protocol fuzzing tools.
 
-The ESP32 plays local PWM/DAC melodies and relay patterns. Reolink's sampled ringtone library
-is not included; its ringtone number is recorded with received events.
+The ESP32 maps each received music ID (0–9) to the corresponding numbered local
+melody or gong pattern. These are synthesized alternatives: the original chime
+firmware commands a separate sound device and does not contain the recordings.
+See the [original firmware audit](firmware/docs/vendor-sounds.md) and sound table below.
 
 ## Documentation
 
@@ -168,7 +170,7 @@ An empty custom AP password falls back to the sign-in password while sign-in is
 enabled, otherwise an open hotspot. AP passwords are 8–63 characters. Mode and
 AP changes require restart; **Change network → Connect** (also in Setup) switches back to client mode.
 
-![WiFi onboarding](firmware/docs/images/readme-1.0.25-setup-wifi.png)
+![WiFi onboarding](firmware/docs/images/readme-1.0.25-c0a431e6db8b-setup-wifi.png)
 
 ## Pairing with the doorbell
 
@@ -185,7 +187,7 @@ ACK transmission. Reboot or a doorbell disconnect request triggers rejoin.
 Joined is a local state; a physical press verifies that the doorbell accepted
 the exchange. Repeated RF ring transmissions produce one local event.
 
-![Pairing](firmware/docs/images/readme-1.0.25-setup-pairing.png)
+![Pairing](firmware/docs/images/readme-1.0.25-c0a431e6db8b-setup-pairing.png)
 
 New node IDs use `1..0x7FFFFFFF`. If an older identity is marked incompatible,
 remove its chime entry in Reolink and start pairing to replace it. Canceling a
@@ -212,11 +214,14 @@ physical press when verifying reception.
 | Advanced | Frequency, trim, receiver, polarity and GPIO mapping |
 | Debug | Radio diagnostics, log/download, last 32 packets, pairing/rejoin/test and passive manual profile |
 
-![Gong settings](firmware/docs/images/readme-1.0.25-sound-gong.png)
+The Sound views show the ten numbered slots used by the doorbell, with local
+preview controls and defaults for tests and MQTT plays.
 
-![Audio settings with PWM output](firmware/docs/images/readme-1.0.25-sound-pwm.png)
+![Gong settings: ten numbered strike patterns](firmware/docs/images/readme-1.0.25-c0a431e6db8b-sound-gong.png)
 
-![Audio settings with DAC output](firmware/docs/images/readme-1.0.25-sound-dac.png)
+![Audio settings: ten melodies with PWM output](firmware/docs/images/readme-1.0.25-c0a431e6db8b-sound-pwm.png)
+
+![Audio settings: ten melodies with DAC output](firmware/docs/images/readme-1.0.25-c0a431e6db8b-sound-dac.png)
 
 **Gong** is the default for new configurations and the leftmost choice in
 Sound and Setup. **Audio** plays the same melodies using either **PWM** or
@@ -224,12 +229,36 @@ Sound and Setup. **Audio** plays the same melodies using either **PWM** or
 or None is selected. Saved PWM/DAC choices migrate to Audio with the same method;
 GPIO assignments are retained as **Audio output** and **Relay**.
 
+Doorbell rings use the music ID sent with each ring, so different Reolink event
+rules can play different sounds without changing local settings. Sound/Setup
+choices set defaults for web/button tests and MQTT plays. Switching between
+Audio and Gong preserves the numbered slot. Existing saved local indices keep
+their sounds; no pairing or settings reset is required. Unknown music IDs,
+including 10, are ignored and reported in packet diagnostics.
+
+| Doorbell slot (music ID) | PWM/DAC alternative | Gong pattern |
+|---|---|---|
+| 1 (0) | Ding dong | Ding-dong |
+| 2 (1) | Ascending | Double |
+| 3 (2) | Double beep | Triple |
+| 4 (3) | Descending | Long ring |
+| 5 (4) | Triple beep | Insistent |
+| 6 (5) | Four-note chime | Slow double |
+| 7 (6) | Rising bell | Slow triple |
+| 8 (7) | Falling bell | Four strikes |
+| 9 (8) | Alternating | Two pairs |
+| 10 (9) | Attention | Three pairs |
+
+These names describe the local sounds, not recovered Reolink titles or melodies.
+
 App volume is **0–4**; PWM/DAC audio level is **0–100%**. Incoming audio level
 is scaled by app volume. Relay rings are suppressed at app volume zero. Strike
 length is 50–2000 ms; gap is 100–3000 ms (defaults 300/700 ms). Long ring uses
 four times the strike length, capped at 3000 ms. Insistent produces five strikes
 using half pulse/gap with minimums of 50/100 ms. None accepts/logs/publishes rings
 without sound. An extra relay pulse in Audio mode is independent of audio level.
+Slow double/triple use twice the gap, capped at 3000 ms. Paired strikes use half
+the gap within each pair (minimum 100 ms) and the full gap between pairs.
 
 Permanent mute survives reboot. Timed mute is 1–1440 minutes and ends on restart.
 Muted and silent doorbell rings are still counted and logged. Local web/button/
@@ -244,28 +273,28 @@ leaves the current sign-in settings unchanged; existing passwords can be kept
 by leaving both password fields empty. Sound tests are enabled after applying any
 pin changes. Advanced wiring exposes radio, LED and button assignments.
 
-![Setup: Gong mode and output wiring](firmware/docs/images/readme-1.0.25-setup-wiring.png)
+![Setup: Gong mode and output wiring](firmware/docs/images/readme-1.0.25-c0a431e6db8b-setup-wiring.png)
 
-![Setup: optional sign-in](firmware/docs/images/readme-1.0.25-setup-signin.png)
+![Setup: optional sign-in](firmware/docs/images/readme-1.0.25-c0a431e6db8b-setup-signin.png)
 
 <details>
 <summary>Final setup review and completion</summary>
 
-![Setup: review before Finish](firmware/docs/images/readme-1.0.25-setup-review.png)
+![Setup: review before Finish](firmware/docs/images/readme-1.0.25-c0a431e6db8b-setup-review.png)
 
-![Setup: choices applied and Setup tab hidden](firmware/docs/images/readme-1.0.25-setup-complete.png)
+![Setup: choices applied and Setup tab hidden](firmware/docs/images/readme-1.0.25-c0a431e6db8b-setup-complete.png)
 
 </details>
 
 After Finish, the normal navigation contains Home, Sound and Settings.
 Use **Settings → General → Show Setup tab** to show the wizard again.
 
-![General settings: show or hide Setup](firmware/docs/images/readme-1.0.25-settings-general.png)
+![General settings: show or hide Setup](firmware/docs/images/readme-1.0.25-c0a431e6db8b-settings-general.png)
 
 In **Settings → Network & time**, WiFi mode comes first. The connection and
 scan controls below it appear only with Client selected.
 
-![Network settings: WiFi mode above client connection](firmware/docs/images/readme-1.0.25-settings-wifi.png)
+![Network settings: WiFi mode above client connection](firmware/docs/images/readme-1.0.25-c0a431e6db8b-settings-wifi.png)
 
 
 GPIO saves apply immediately without restarting. Optional audio/relay/LED/button can be disabled;
@@ -284,15 +313,15 @@ within their panel.
 <details>
 <summary>Mobile UI and Debug screenshots</summary>
 
-![Phone interface](firmware/docs/images/readme-1.0.25-mobile.png)
+![Phone interface](firmware/docs/images/readme-1.0.25-c0a431e6db8b-mobile.png)
 
-![Debug diagnostics](firmware/docs/images/readme-1.0.25-debug.png)
+![Debug diagnostics](firmware/docs/images/readme-1.0.25-c0a431e6db8b-debug.png)
 
 </details>
 
-![Security settings](firmware/docs/images/readme-1.0.25-settings-security.png)
+![Security settings](firmware/docs/images/readme-1.0.25-c0a431e6db8b-settings-security.png)
 
-![Radio and GPIO settings](firmware/docs/images/readme-1.0.25-wiring.png)
+![Radio and GPIO settings](firmware/docs/images/readme-1.0.25-c0a431e6db8b-wiring.png)
 
 ## Frequencies and RF tuning
 
@@ -323,7 +352,7 @@ optional credentials, base topic and discovery options. Connect the ESP32 in
 client WiFi mode. The default base is `reolink_chime/<device-id>`; read its actual
 value from `/api/integrations`. The discovery prefix defaults to `homeassistant`.
 
-![MQTT settings](firmware/docs/images/readme-1.0.25-mqtt.png)
+![MQTT settings](firmware/docs/images/readme-1.0.25-c0a431e6db8b-mqtt.png)
 
 | Topic suffix | Use |
 |---|---|
@@ -369,7 +398,7 @@ RX/playback pause during writing;
 the device restarts and the UI waits for it to return. Failed uploads resume
 operation and rejoin. Use USB for recovery from an interrupted update.
 
-![Update restart screen](firmware/docs/images/readme-1.0.25-update.png)
+![Update restart screen](firmware/docs/images/readme-1.0.25-c0a431e6db8b-update.png)
 
 Set the firmware version manually in `firmware/version.json`; builds keep it
 unchanged. Push a tag exactly matching that version (e.g. `1.0.24`, without a

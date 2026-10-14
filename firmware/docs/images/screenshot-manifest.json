@@ -1,26 +1,26 @@
 {
   "firmware_version": "1.0.25",
   "readme_screenshots": {
-    "home": "readme-1.0.25-home.png",
-    "mobile": "readme-1.0.25-mobile.png",
-    "sound-gong": "readme-1.0.25-sound-gong.png",
-    "sound-pwm": "readme-1.0.25-sound-pwm.png",
-    "sound-dac": "readme-1.0.25-sound-dac.png",
-    "setup-wifi": "readme-1.0.25-setup-wifi.png",
-    "setup-pairing": "readme-1.0.25-setup-pairing.png",
-    "setup-wiring": "readme-1.0.25-setup-wiring.png",
-    "setup-signin": "readme-1.0.25-setup-signin.png",
-    "setup-review": "readme-1.0.25-setup-review.png",
-    "setup-complete": "readme-1.0.25-setup-complete.png",
-    "settings-general": "readme-1.0.25-settings-general.png",
-    "settings-wifi": "readme-1.0.25-settings-wifi.png",
-    "settings-security": "readme-1.0.25-settings-security.png",
-    "wiring": "readme-1.0.25-wiring.png",
-    "mqtt": "readme-1.0.25-mqtt.png",
-    "debug": "readme-1.0.25-debug.png",
-    "update": "readme-1.0.25-update.png"
+    "home": "readme-1.0.25-c0a431e6db8b-home.png",
+    "mobile": "readme-1.0.25-c0a431e6db8b-mobile.png",
+    "sound-gong": "readme-1.0.25-c0a431e6db8b-sound-gong.png",
+    "sound-pwm": "readme-1.0.25-c0a431e6db8b-sound-pwm.png",
+    "sound-dac": "readme-1.0.25-c0a431e6db8b-sound-dac.png",
+    "setup-wifi": "readme-1.0.25-c0a431e6db8b-setup-wifi.png",
+    "setup-pairing": "readme-1.0.25-c0a431e6db8b-setup-pairing.png",
+    "setup-wiring": "readme-1.0.25-c0a431e6db8b-setup-wiring.png",
+    "setup-signin": "readme-1.0.25-c0a431e6db8b-setup-signin.png",
+    "setup-review": "readme-1.0.25-c0a431e6db8b-setup-review.png",
+    "setup-complete": "readme-1.0.25-c0a431e6db8b-setup-complete.png",
+    "settings-general": "readme-1.0.25-c0a431e6db8b-settings-general.png",
+    "settings-wifi": "readme-1.0.25-c0a431e6db8b-settings-wifi.png",
+    "settings-security": "readme-1.0.25-c0a431e6db8b-settings-security.png",
+    "wiring": "readme-1.0.25-c0a431e6db8b-wiring.png",
+    "mqtt": "readme-1.0.25-c0a431e6db8b-mqtt.png",
+    "debug": "readme-1.0.25-c0a431e6db8b-debug.png",
+    "update": "readme-1.0.25-c0a431e6db8b-update.png"
   },
-  "embedded_ui_sha256": "0ee61424c746a44587f7bfe0dd52f48a339bc057947d0395e4e8e68b6290fe4b",
+  "embedded_ui_sha256": "c0a431e6db8b82dde50a0378ad50e28458e5f1b2dbd61bb56ca2d8a8dd0ece0a",
   "data": "Synthetic API fixtures; no device connection",
   "screenshots": [
     {
@@ -380,7 +380,7 @@
       "tab": "sound",
       "viewport": {
         "width": 390,
-        "height": 1813
+        "height": 2347
       }
     },
     {
@@ -396,7 +396,7 @@
       "tab": "setup",
       "viewport": {
         "width": 390,
-        "height": 1795
+        "height": 2265
       }
     },
     {
@@ -428,7 +428,7 @@
       "tab": "sound",
       "viewport": {
         "width": 390,
-        "height": 2074
+        "height": 2779
       }
     },
     {
@@ -444,7 +444,7 @@
       "tab": "setup",
       "viewport": {
         "width": 390,
-        "height": 1770
+        "height": 2410
       }
     },
     {
@@ -476,7 +476,7 @@
       "tab": "sound",
       "viewport": {
         "width": 390,
-        "height": 2095
+        "height": 2800
       }
     },
     {
@@ -492,7 +492,7 @@
       "tab": "setup",
       "viewport": {
         "width": 390,
-        "height": 1770
+        "height": 2410
       }
     },
     {
@@ -524,7 +524,7 @@
       "tab": "sound",
       "viewport": {
         "width": 390,
-        "height": 979
+        "height": 1066
       }
     },
     {
@@ -540,7 +540,7 @@
       "tab": "setup",
       "viewport": {
         "width": 390,
-        "height": 905
+        "height": 948
       }
     },
     {
@@ -588,7 +588,7 @@
       "tab": "setup",
       "viewport": {
         "width": 390,
-        "height": 1959
+        "height": 2599
       }
     },
     {
@@ -616,7 +616,7 @@
       }
     },
     {
-      "file": "readme-1.0.25-home.png",
+      "file": "readme-1.0.25-c0a431e6db8b-home.png",
       "tab": "home",
       "viewport": {
         "width": 1100,
@@ -625,7 +625,7 @@
       "source_file": "ui-setup-hidden-desktop.png"
     },
     {
-      "file": "readme-1.0.25-mobile.png",
+      "file": "readme-1.0.25-c0a431e6db8b-mobile.png",
       "tab": "home",
       "viewport": {
         "width": 390,
@@ -634,7 +634,7 @@
       "source_file": "ui-setup-hidden-mobile.png"
     },
     {
-      "file": "readme-1.0.25-sound-gong.png",
+      "file": "readme-1.0.25-c0a431e6db8b-sound-gong.png",
       "tab": "sound",
       "viewport": {
         "width": 1100,
@@ -643,7 +643,7 @@
       "source_file": "ui-sound-gong-desktop.png"
     },
     {
-      "file": "readme-1.0.25-sound-pwm.png",
+      "file": "readme-1.0.25-c0a431e6db8b-sound-pwm.png",
       "tab": "sound",
       "viewport": {
         "width": 1100,
@@ -652,7 +652,7 @@
       "source_file": "ui-sound-pwm-desktop.png"
     },
     {
-      "file": "readme-1.0.25-sound-dac.png",
+      "file": "readme-1.0.25-c0a431e6db8b-sound-dac.png",
       "tab": "sound",
       "viewport": {
         "width": 1100,
@@ -661,7 +661,7 @@
       "source_file": "ui-sound-dac-desktop.png"
     },
     {
-      "file": "readme-1.0.25-setup-wifi.png",
+      "file": "readme-1.0.25-c0a431e6db8b-setup-wifi.png",
       "tab": "setup",
       "viewport": {
         "width": 1100,
@@ -670,7 +670,7 @@
       "source_file": "web-setup-wifi.png"
     },
     {
-      "file": "readme-1.0.25-setup-pairing.png",
+      "file": "readme-1.0.25-c0a431e6db8b-setup-pairing.png",
       "tab": "setup",
       "viewport": {
         "width": 1100,
@@ -679,7 +679,7 @@
       "source_file": "web-setup-pairing.png"
     },
     {
-      "file": "readme-1.0.25-setup-wiring.png",
+      "file": "readme-1.0.25-c0a431e6db8b-setup-wiring.png",
       "tab": "setup",
       "viewport": {
         "width": 1100,
@@ -688,7 +688,7 @@
       "source_file": "ui-setup-gong-desktop.png"
     },
     {
-      "file": "readme-1.0.25-setup-signin.png",
+      "file": "readme-1.0.25-c0a431e6db8b-setup-signin.png",
       "tab": "setup",
       "viewport": {
         "width": 1100,
@@ -697,7 +697,7 @@
       "source_file": "ui-auth-enabled-desktop.png"
     },
     {
-      "file": "readme-1.0.25-setup-review.png",
+      "file": "readme-1.0.25-c0a431e6db8b-setup-review.png",
       "tab": "setup",
       "viewport": {
         "width": 1100,
@@ -706,7 +706,7 @@
       "source_file": "ui-auth-review-desktop.png"
     },
     {
-      "file": "readme-1.0.25-setup-complete.png",
+      "file": "readme-1.0.25-c0a431e6db8b-setup-complete.png",
       "tab": "setup",
       "viewport": {
         "width": 1100,
@@ -715,7 +715,7 @@
       "source_file": "web-setup-complete.png"
     },
     {
-      "file": "readme-1.0.25-settings-general.png",
+      "file": "readme-1.0.25-c0a431e6db8b-settings-general.png",
       "tab": "settings",
       "viewport": {
         "width": 1100,
@@ -724,7 +724,7 @@
       "source_file": "ui-settings-setup-hidden-desktop.png"
     },
     {
-      "file": "readme-1.0.25-settings-wifi.png",
+      "file": "readme-1.0.25-c0a431e6db8b-settings-wifi.png",
       "tab": "settings",
       "viewport": {
         "width": 1100,
@@ -733,7 +733,7 @@
       "source_file": "ui-settings-wifi-desktop.png"
     },
     {
-      "file": "readme-1.0.25-settings-security.png",
+      "file": "readme-1.0.25-c0a431e6db8b-settings-security.png",
       "tab": "settings",
       "viewport": {
         "width": 1100,
@@ -742,7 +742,7 @@
       "source_file": "web-settings-security.png"
     },
     {
-      "file": "readme-1.0.25-wiring.png",
+      "file": "readme-1.0.25-c0a431e6db8b-wiring.png",
       "tab": "settings",
       "viewport": {
         "width": 1100,
@@ -751,7 +751,7 @@
       "source_file": "ui-wiring-desktop.png"
     },
     {
-      "file": "readme-1.0.25-mqtt.png",
+      "file": "readme-1.0.25-c0a431e6db8b-mqtt.png",
       "tab": "settings",
       "viewport": {
         "width": 1100,
@@ -760,7 +760,7 @@
       "source_file": "web-settings-ha.png"
     },
     {
-      "file": "readme-1.0.25-debug.png",
+      "file": "readme-1.0.25-c0a431e6db8b-debug.png",
       "tab": "settings",
       "viewport": {
         "width": 1100,
@@ -769,7 +769,7 @@
       "source_file": "web-maintenance.png"
     },
     {
-      "file": "readme-1.0.25-update.png",
+      "file": "readme-1.0.25-c0a431e6db8b-update.png",
       "tab": "settings",
       "viewport": {
         "width": 1100,
@@ -792,9 +792,14 @@
     "PWM",
     "DAC"
   ],
+  "checked_sound_slots": 10,
+  "mode_switch_preserves_sound_slot": true,
   "audio_preview_outputs": [
     0,
+    0,
     1,
+    1,
+    null,
     1,
     1,
     0

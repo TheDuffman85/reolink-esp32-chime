@@ -130,11 +130,11 @@ inline GongType outputType(uint8_t mode, uint8_t audioOutput) {
   return mode == uint8_t(chime::GongKind::Audio) ?
     (audioOutput == uint8_t(chime::AudioOutput::Dac) ? GongType::Dac : GongType::Pwm) : static_cast<GongType>(mode);
 }
-constexpr uint8_t RelayPatterns = 5;
+constexpr uint8_t RelayPatterns = chime::Patterns;
 struct GongRequest {
   GongSettings tone;
   GongType type = GongType::Relay;
-  uint8_t pattern = 0;          // 0 ding-dong, 1 double, 2 triple, 3 long, 4 insistent
+  uint8_t pattern = 0;          // Same 0..9 slots as the doorbell music ID.
   uint16_t pulseMs = 300, gapMs = 700;
 };
 class Gong {

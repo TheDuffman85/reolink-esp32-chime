@@ -26,7 +26,7 @@ bool validSettings(const Settings &s) {
   return s.schema == 2 && s.nodeId && s.nodeId != UINT32_MAX &&
     (!s.paired || (s.profile && s.source && s.destination == s.nodeId)) &&
     chime::validFrequency(s.radio.hz) &&
-    uint8_t(s.radio.polarity) <= 2 && s.gong.melody < 3 && s.gong.volume <= 100 &&
+    uint8_t(s.radio.polarity) <= 2 && s.gong.melody < chime::Melodies && s.gong.volume <= 100 &&
     s.gong.relayMs >= 50 && s.gong.relayMs <= 2000 && s.learnedPolarity <= 2 &&
     memchr(s.ssid, 0, sizeof(s.ssid)) && memchr(s.wifiPassword, 0, sizeof(s.wifiPassword)) &&
     memchr(s.adminPassword, 0, sizeof(s.adminPassword)) && strlen(s.adminPassword) >= 12;

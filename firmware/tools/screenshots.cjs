@@ -7,6 +7,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const root = path.resolve(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'include/WebUi.h'), 'utf8');
+const embeddedUiHash = crypto.createHash('sha256').update(source).digest('hex');
 const firmwareVersion = JSON.parse(fs.readFileSync(path.join(root, 'version.json'), 'utf8')).version;
 const nextPatchVersion = firmwareVersion.replace(/\d+$/, patch => String(Number(patch) + 1));
 const match = source.match(/WebUi\[\] PROGMEM = R"HTML\(([\s\S]*?)\)HTML";/);
@@ -52,10 +53,10 @@ const ring = (id, ago, source, outcome, extra = {}) => ({ id, source, outcome, t
   ms: 60000 - ago * 1000, epoch: status.epoch - ago, previous_boot: false, volume: 4, audio_level: 35,
   preview: false, ...(source === 'doorbell' ? { tone: 0, rssi_dbm: -62 } : {}), ...extra });
 const rings = { uptime_ms: 60000, epoch: status.epoch, last_id: 5, rings_since_start: 1, rings: [
-  ring(5, 8, 'doorbell', 'played'),
+  ring(5, 8, 'doorbell', 'played', { tone: 9, sound: 9 }),
   ring(4, 25, 'mqtt', 'played', { sound: 1, volume: 3 }),
   ring(3, 40, 'web', 'played', { sound: 2, preview: true }),
-  ring(2, 3600 * 5, 'doorbell', 'chime_muted', { previous_boot: true, tone: 3, rssi_dbm: -70 }),
+  ring(2, 3600 * 5, 'doorbell', 'chime_muted', { previous_boot: true, tone: 3, sound: 3, rssi_dbm: -70 }),
   ring(1, 86400 + 120, 'doorbell', 'played', { previous_boot: true, rssi_dbm: -65 }),
 ] };
 const authInfo = { enabled: true, username: 'admin', password_set: true };
@@ -323,6 +324,8 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     await page.locator('#gongTypes .choice').filter({ has: page.locator('b', { hasText: /^Audio$/ }) }).click();
     assert.equal(await page.locator('#audioCards').isVisible(), true);
     assert.equal(await page.locator('#relayCards').isVisible(), false);
+    assert.equal(await page.locator('#melodies .choice').count(), 10);
+    assert.equal(await page.locator('#patterns .choice').count(), 10);
     for (const [name, output] of [['PWM', 0], ['DAC', 1]]) {
       await page.locator('#audioOutputs .choice').filter({ has: page.locator('b', { hasText: new RegExp('^' + name + '$') }) }).click();
       await Promise.all([page.waitForResponse(r => r.url().endsWith('/api/gong/test')), page.locator('#melodies button[data-play="1"]').click()]);
@@ -331,7 +334,19 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
       assert.equal(previews.at(-1).melody, 1);
       assert.equal(previews.at(-1).extra_relay, false);
       assert.equal(previews.at(-1).extra_relay_ms, settings.relay_ms);
+      await Promise.all([page.waitForResponse(r => r.url().endsWith('/api/gong/test')), page.locator('#melodies button[data-play="9"]').click()]);
+      assert.equal(previews.at(-1).melody, 9);
+      assert.equal(previews.at(-1).audio_output, output);
     }
+    // Switching between audio and gong keeps the numbered doorbell slot.
+    await page.locator('#melodies .choice[data-i="9"]').click();
+    await page.locator('#gongTypes .choice').filter({ has: page.locator('b', { hasText: /^Gong$/ }) }).click();
+    assert.equal(await page.evaluate(() => patternPick), 9);
+    await Promise.all([page.waitForResponse(r => r.url().endsWith('/api/gong/test')), page.locator('#patterns button[data-play="9"]').click()]);
+    assert.equal(previews.at(-1).pattern, 9);
+    await page.locator('#gongTypes .choice').filter({ has: page.locator('b', { hasText: /^Audio$/ }) }).click();
+    assert.equal(await page.evaluate(() => soundPick), 9);
+    await page.locator('#melodies .choice[data-i="0"]').click();
     // Audio previews use the unsaved relay choice and pulse length.
     await page.locator('#relay').check();await page.locator('#relayMs').fill('450');
     await Promise.all([page.waitForResponse(r=>r.url().endsWith('/api/gong/test')),page.locator('#melodies button[data-play="0"]').click()]);
@@ -713,8 +728,8 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     assert.equal(expectedAuthErrors,0);
     if (errors.length || unexpected.length)
       throw Error(JSON.stringify({ page_errors: errors, unexpected_requests: unexpected }));
-    // Dedicated README assets use versioned URLs so GitHub cannot reuse an
-    // older image at a legacy filename. Keep them tied to the tested captures.
+    // Include the UI hash so updated screenshots get fresh URLs even when the
+    // firmware version is unchanged. Keep them tied to the tested captures.
     const readmeImages = {
       home:'ui-setup-hidden-desktop.png', mobile:'ui-setup-hidden-mobile.png',
       'sound-gong':'ui-sound-gong-desktop.png','sound-pwm':'ui-sound-pwm-desktop.png','sound-dac':'ui-sound-dac-desktop.png',
@@ -726,18 +741,23 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     };
     const readmeScreenshots={};
     for(const [view,original] of Object.entries(readmeImages)) {
-      const file=`readme-${firmwareVersion}-${view}.png`,capture=results.find(item=>item.file===original);
+      const file=`readme-${firmwareVersion}-${embeddedUiHash.slice(0,12)}-${view}.png`,capture=results.find(item=>item.file===original);
       assert.ok(capture,original);fs.copyFileSync(path.join(images,original),path.join(images,file));
       readmeScreenshots[view]=file;results.push({...capture,file,source_file:original});
     }
-    const readmePath=path.join(root,'../README.md'),readme=fs.readFileSync(readmePath,'utf8');
-    const updatedReadme=readme.replace(/firmware\/docs\/images\/readme-\d+\.\d+\.\d+-([a-z-]+)\.png/g,(url,view)=>{
-      assert.ok(readmeScreenshots[view],view);return 'firmware/docs/images/'+readmeScreenshots[view];
-    });
-    if(updatedReadme!==readme)fs.writeFileSync(readmePath,updatedReadme);
-    const report = { firmware_version:firmwareVersion,readme_screenshots:readmeScreenshots,embedded_ui_sha256: crypto.createHash('sha256').update(source).digest('hex'),
+    for (const document of [path.join(root,'../README.md'),path.join(root,'docs/ui-changes.html')]) {
+      // The gallery is optional when running the harness in a scratch directory.
+      if (!fs.existsSync(document)) continue;
+      const text=fs.readFileSync(document,'utf8');
+      const updated=text.replace(/readme-\d+\.\d+\.\d+-(?:[0-9a-f]{12}-)?([a-z-]+)\.png/g,(file,view)=>{
+        assert.ok(readmeScreenshots[view],view);return readmeScreenshots[view];
+      });
+      if(updated!==text)fs.writeFileSync(document,updated);
+    }
+    const report = { firmware_version:firmwareVersion,readme_screenshots:readmeScreenshots,embedded_ui_sha256: embeddedUiHash,
       data: 'Synthetic API fixtures; no device connection', screenshots: results,
       checked_widths: [390, 768, 1100], checked_output_types: ['Gong', 'Audio', 'None'], checked_audio_outputs: ['PWM', 'DAC'],
+      checked_sound_slots: 10, mode_switch_preserves_sound_slot: true,
       audio_preview_outputs: previews.map(p => p.audio_output), setup_live_pins_only_after_finish: true, setup_auth_only_after_finish: true, expected_auth_storage_failure_tested: true, setup_visibility_persists: true, settings_wifi_pair_without_setup: true, wifi_mode_first_client_only_connection: true, setup_sound_drafts_survive_refresh: true, audio_previews_match_relay_draft: true, page_errors: errors, unexpected_requests: unexpected,
       page_horizontal_overflow: false };
     fs.writeFileSync(path.join(images, 'screenshot-manifest.json'), JSON.stringify(report, null, 2) + '\n');

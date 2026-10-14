@@ -25,8 +25,8 @@ const char *outputError(GongType type, const PinMap &map);
 extern chime::AppConfig chimeApp;
 void loadChimeApp();
 void saveChimeApp();
-// What a ring (or test) plays: the configured gong type with its melody or
-// relay pattern. appVolume 0..4 scales the audio output; 0 also silences the relay.
+// Local test/MQTT defaults. Doorbell rings replace both sound slots with their
+// transmitted music ID. appVolume 0..4 scales audio; 0 silences the relay too.
 GongRequest gongRequest(uint8_t appVolume);
 
 // Permanent mute is saved (NVS "mute"); a timed mute lives in RAM, so a

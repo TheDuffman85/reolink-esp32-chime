@@ -88,9 +88,12 @@ String decodeRing(const chime::Packet &packet, float rssi) {
   uint8_t plain[4]; memcpy(plain, packet.bytes + 17, sizeof(plain));
   if (!crypt(nullptr, settings.key, plain, sizeof(plain))) return "AES error";
   if (!chime::ringPayload(plain, ring)) return "payload opcode differs (check key)";
+  GongRequest request = gongRequest(chimeApp.volume);
+  if (!chime::doorbellSound(ring.parameter, request.tone.melody, request.pattern))
+    return String("unsupported music ID ") + ring.parameter;
   if (duplicates.seen(ring, millis())) return "duplicate ring";
   lastRing = millis(); ++rings;
-  const auto outcome = playChime(chime::RingSource::Doorbell, gongRequest(chimeApp.volume), chimeApp.volume,
+  const auto outcome = playChime(chime::RingSource::Doorbell, request, chimeApp.volume,
     0, ring.parameter, int8_t(constrain(lroundf(rssi), -127L, 0L)));
   return String("ring parameter ") + ring.parameter + ", " + chime::RingOutcomeNames[uint8_t(outcome)];
 }
