@@ -88,7 +88,7 @@ Returns a flat status object, plus the nested `mute` object:
 | `dropped`, `invalid_lengths`, `false_syncs`, `radio_resets` | Receiver error/reset counters |
 | `rings`, `last_ring_ms`, `ring_seq`, `gong_active`, `gong_ready`, `storage_ok` | Ring counters, last uptime or null, output and storage state |
 | `auth_enabled`, `auth_user` | Authentication state |
-| `setup_visible` | Device-wide Setup tab visibility, persisted across restarts |
+| `setup_visible` | Stored Setup visibility; the web UI ignores it and shows Setup only while `setup_required` is true |
 | `setup_required` | Initial setup is unfinished; only the Setup page is available until Finish |
 | `mute` | `{active, permanent, remaining_s}`; remaining seconds rounded up |
 | `time_synced`, `epoch`, `mqtt` | Clock state, UTC seconds or null and MQTT connection state |
@@ -270,7 +270,7 @@ reloads or restarts. Saving `{"visible":false}` also marks initial setup complet
 and unlocks the other pages. This completion flag persists independently of
 visibility: showing Setup again does not lock navigation. Existing paired
 installations default to hidden and complete when upgrading; an existing visible
-wizard remains unfinished. Settings → General can show or hide the tab explicitly
+wizard remains unfinished. The web UI no longer offers a way to reopen Setup
 after initial setup is complete.
 The wizard hides only after sound/wiring and any requested authentication saves
 succeed. A failed save keeps the final review available for retry. WiFi and

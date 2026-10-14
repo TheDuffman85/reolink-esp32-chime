@@ -173,8 +173,8 @@ Setup visibility in `setup` and initial completion in `init_done`).
 Until initial setup finishes, the UI exposes only Setup, overriding saved browser
 page preferences even after pairing or a restart. Finish saves sound/wiring and
 any requested sign-in settings, then marks setup complete and unlocks the other
-pages. Failed saves keep the review available for retry. Setup hides after Finish
-and can be shown again under Settings → General without locking navigation.
+pages. Failed saves keep the review available for retry. Setup does not return
+after Finish; the UI hides navigation only while initial setup runs.
 Upgrades migrate an existing hidden wizard as complete and a visible wizard as
 unfinished; older paired installations without a visibility preference stay complete.
 Secrets are in ordinary NVS; settings GETs omit passwords/keys. Gong is the default for new
@@ -252,7 +252,7 @@ HTML, intercepts requests, uses synthetic fixtures, checks JavaScript errors,
 dialogs and overflow at 390/768/1100 px, and writes PNGs plus a UI hash manifest.
 The initial setup captures show all five steps with only Setup available and
 completion with Home, Sound and Settings unlocked. Checks cover saved browser
-pages, pairing, reloads, failed Finish saves and reopening Setup after completion.
+pages, pairing, reloads, failed Finish saves and Setup staying closed after completion.
 See [image documentation](docs/README.md).
 
 Pairing/join/rejoin, RF/CRC and press/Test reception have been validated on the

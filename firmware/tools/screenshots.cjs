@@ -225,11 +225,18 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
       document.querySelector('header').prepend(label);
     });
     await stabilise();
+    // Setup exists only during initial setup, so the fixture re-enters that state.
     const enableSetup = async () => {
-      if (await page.locator('#setupTab').isVisible()) return;
-      await page.evaluate(()=>{show('settings');openSection('general')});
-      await page.locator('#cfgSetupVisible').check();
-      await page.waitForFunction(()=>S.setup_visible===true&&!document.getElementById('cfgSetupVisible').disabled);
+      if (await page.evaluate(()=>initialSetup())) return;
+      const step=await page.evaluate(()=>wizStep);
+      status.setup_visible=true;status.setup_required=true;
+      await page.evaluate(async s=>{await refresh();wizStep=s;show('setup')},step);
+      await page.waitForFunction(()=>activeTab==='setup');
+    };
+    const leaveSetup = async () => {
+      if (!await page.evaluate(()=>initialSetup())) return;
+      status.setup_visible=false;status.setup_required=false;
+      await page.evaluate(async()=>{await refresh()});
     };
     // Finish closes Setup; reopen it on the sound step to change choices again.
     const reopenSetup = async () => {
@@ -239,7 +246,7 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     };
     const select = async tab => {
       if(tab==='setup')await enableSetup();
-      await page.locator(`#nav [data-tab="${tab}"]`).click();
+      else{await leaveSetup();await page.locator(`#nav [data-tab="${tab}"]`).click();}
       await page.locator(`#tab-${tab}`).waitFor({ state: 'visible' });
     };
     const capture = async (name, tab, width = 1100, height = 1000, section, fullPage) => {
@@ -263,7 +270,7 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
       results.push({ file: name, tab, viewport: { width, height } });
     };
     // Configured devices hide Setup, while every choice remains available.
-    assert.equal(await page.locator('#setupTab').isVisible(),false);
+    assert.equal(await page.locator('#nav').isVisible(),true);
     assert.equal(await page.evaluate(()=>activeTab),'home');
     await capture('ui-setup-hidden-desktop.png','home',1100,700);
     await capture('ui-setup-hidden-mobile.png','home',390,900);
@@ -289,7 +296,7 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     await page.evaluate(()=>{wmDirty=false;fillWifiMode()});
     await page.locator('#cfgWifiChange').click();
     assert.equal(await page.evaluate(()=>activeTab),'settings');
-    assert.equal(await page.locator('#setupTab').isVisible(),false);
+    assert.equal(await page.locator('#nav').isVisible(),true);
     assert.equal(await page.locator('#wiz0 .stepper-title').isVisible(),false);
     await page.waitForFunction(()=>document.querySelectorAll('#networks button[data-ssid]').length===2);
     await capture('ui-settings-wifi-desktop.png','settings',1100,1100,'network',true);
@@ -310,7 +317,7 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     await capture('ui-settings-pair-mobile.png','settings',390,900,'doorbell',true);
     await page.locator('#pStart').click();
     await page.locator('#pCancel').waitFor();
-    assert.equal(await page.locator('#setupTab').isVisible(),false);
+    assert.equal(await page.locator('#nav').isVisible(),true);
     await page.locator('#pCancel').click();
     await page.locator('#pStart').waitFor();
     assert.deepEqual(pairActions,['/api/pair/start','/api/pair/cancel']);
@@ -318,17 +325,9 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     assert.equal(await page.locator('#cfgPairTask').isVisible(),false);
     status.joined=true;status.pairing='joined';chime.joined=true;
     await page.evaluate(async()=>{await refresh()});
-    // The General switch reveals Setup on the device, including after reload.
-    await enableSetup();
-    assert.equal(status.setup_visible,true);
-    assert.equal(status.setup_required,false);
-    assert.deepEqual(await page.locator('#nav button:visible').evaluateAll(buttons=>buttons.map(b=>b.dataset.tab)),['home','sound','setup','settings']);
-    await capture('ui-settings-setup-shown-desktop.png','settings',1100,900,'general',true);
-    await capture('ui-settings-setup-shown-mobile.png','settings',390,900,'general',true);
-    await page.reload();
-    await page.waitForFunction(()=>S&&S.setup_visible===true&&P);
-    await stabilise();
-    assert.equal(await page.locator('#setupTab').isVisible(),true);
+    // Configured devices offer no way back into Setup.
+    assert.deepEqual(await page.locator('#nav button:visible').evaluateAll(buttons=>buttons.map(b=>b.dataset.tab)),['home','sound','settings']);
+    assert.equal((await page.locator('#sec-general').textContent()).includes('Setup'),false);
     await capture('web-status.png', 'home', 1100, 700);
     await select('sound');
     assert.deepEqual(await page.locator('#gongTypes .choice b').allTextContents(), ['Gong', 'Audio', 'None']);
@@ -395,6 +394,7 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     await capture('web-sound-relay.png', 'sound');
     gong.type = 1; gong.pattern = 0;
     await page.evaluate(async () => { await loadSettings(); render(); });
+    await page.evaluate(()=>{wizStep=0});
     await capture('web-setup-wifi.png', 'setup', 1100, 800);
     status.joined = false; status.pairing = 'idle'; chime.joined = false;
     await page.evaluate(async () => { await refresh(); });
@@ -451,7 +451,7 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     await page.waitForFunction(() => wizSetupSaved);
     assert.equal(setupSaves.length, savesBeforeReview + 1);
     assert.equal(status.setup_visible,false);
-    assert.equal(await page.locator("#setupTab").isVisible(),false);
+    assert.equal(await page.locator('#nav').isVisible(),true);
     assert.equal(gong.type, 0); assert.equal(gong.audio_output, 1);
     assert.match(await page.locator('#doneSummary').textContent(), /Audio · DAC/);
     await reopenSetup();
@@ -643,7 +643,7 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     // All changed UI states, including the complete output wiring on phones.
     for (const [mode, output, slug] of [[1, 0, 'gong'], [0, 0, 'pwm'], [0, 1, 'dac'], [2, 0, 'none']]) {
       gong.type = mode; gong.audio_output = output;
-      status.setup_visible=false;await page.evaluate(async()=>{await refresh()});
+      await leaveSetup();
       await page.evaluate(async () => { await loadSettings(); });
       await capture(`ui-sound-${slug}-desktop.png`, 'sound', 1100, 1000, undefined, true);
       await capture(`ui-sound-${slug}-mobile.png`, 'sound', 390, 900, undefined, true);
@@ -703,21 +703,19 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     assert.equal(settings.relay,true);assert.equal(previews.at(-1).extra_relay,false);
 
     settings.relay=false;
-    // Hide persists across reload and overrides a stale saved Setup tab.
-    await select('settings');await page.evaluate(()=>openSection('general'));
-    await page.locator('#cfgSetupVisible').uncheck();
-    await page.waitForFunction(()=>S.setup_visible===false&&!document.getElementById('cfgSetupVisible').disabled);
+    // A stale saved Setup tab opens Home once initial setup is complete.
+    await leaveSetup();
     await page.evaluate(()=>localStorage.setItem('tab','setup'));
     await page.reload();
     await page.waitForFunction(()=>S&&P&&activeTab==='home');await stabilise();
-    assert.equal(await page.locator('#setupTab').isVisible(),false);
+    assert.equal(await page.locator('#nav').isVisible(),true);
     // Losing pairing must still offer a direct recovery path without Setup.
     status.paired=false;status.joined=false;status.pairing='idle';chime.joined=false;
     await page.evaluate(async()=>{await refresh()});
     await page.locator('#heroSetup').click();
     assert.equal(await page.evaluate(()=>activeTab),'settings');
     assert.equal(await page.locator('#cfgPairTask').isVisible(),true);
-    assert.equal(await page.locator('#setupTab').isVisible(),false);
+    assert.equal(await page.locator('#nav').isVisible(),true);
     await page.locator('#pNext').click();
     status.paired=true;status.joined=true;status.pairing='joined';chime.joined=true;
     await page.evaluate(async()=>{await refresh()});
@@ -740,7 +738,7 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
       await page.evaluate(tab=>localStorage.setItem('tab',tab),stored);await page.reload();
       await page.waitForFunction(()=>S&&P&&activeTab==='setup');await stabilise();
       assert.equal(await page.evaluate(()=>wizStep),0);
-      assert.deepEqual(await page.locator('#nav button:visible').evaluateAll(buttons=>buttons.map(b=>b.dataset.tab)),['setup']);
+      assert.equal(await page.locator('#nav').isVisible(),false);
       for(const tab of ['home','sound','settings']) {
         await page.evaluate(tab=>show(tab),tab);
         assert.equal(await page.evaluate(()=>activeTab),'setup');
@@ -755,13 +753,12 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     await capture('ui-initial-pairing-mobile.png','setup',390,900,undefined,true);
     status.paired=true;status.joined=true;status.pairing='joined';chime.joined=true;
     await page.evaluate(async()=>{await refresh()});
-    assert.deepEqual(await page.locator('#nav button:visible').evaluateAll(buttons=>buttons.map(b=>b.dataset.tab)),['setup']);
+    assert.equal(await page.locator('#nav').isVisible(),false);
     await page.evaluate(()=>localStorage.setItem('tab','settings'));await page.reload();
     await page.waitForFunction(()=>S&&P&&activeTab==='setup');await stabilise();
     assert.equal(await page.evaluate(()=>wizStep),1);
     await page.locator('#pNext').click();
     await page.waitForFunction(()=>!wizWireBusy&&wizWireOk);
-    assert.equal(await page.locator('#wizAdvanced').isVisible(),false);
     await capture('ui-initial-wiring-desktop.png','setup',1100,1000,undefined,true);
     await capture('ui-initial-wiring-mobile.png','setup',390,900,undefined,true);
     await page.locator('#sName').fill('Initial setup draft');
@@ -784,7 +781,7 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     await page.locator('#dHome').click();
     await page.waitForFunction(()=>document.getElementById('toast').textContent.includes('Synthetic setup storage failure')&&!document.getElementById('dHome').disabled);
     assert.equal(status.setup_required,true);
-    assert.deepEqual(await page.locator('#nav button:visible').evaluateAll(buttons=>buttons.map(b=>b.dataset.tab)),['setup']);
+    assert.equal(await page.locator('#nav').isVisible(),false);
     await page.locator('#dHome').click();
     await page.waitForFunction(()=>wizSetupSaved&&S.setup_required===false);
     assert.equal(status.setup_visible,false);
@@ -793,7 +790,7 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     await capture('ui-initial-complete-desktop.png','home',1100,850,undefined,true);
     await capture('ui-initial-complete-mobile.png','home',390,900,undefined,true);
     await page.reload();await page.waitForFunction(()=>S&&P&&activeTab==='home');await stabilise();
-    await enableSetup();await select('sound');
+    await select('sound');
     assert.equal(await page.evaluate(()=>activeTab),'sound');
     assert.equal(status.setup_required,false);
     Object.assign(authInfo,initialAuthBefore);status.auth_enabled=authInfo.enabled;status.auth_user=authInfo.username;
@@ -861,9 +858,9 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
       data: 'Synthetic API fixtures; no device connection', screenshots: results,
       checked_widths: [390, 768, 1100], checked_output_types: ['Gong', 'Audio', 'None'], checked_audio_outputs: ['PWM', 'DAC'],
       checked_sound_slots: 10, mode_switch_preserves_sound_slot: true,
-      audio_preview_outputs: previews.map(p => p.audio_output), setup_live_pins_only_after_finish: true, setup_auth_only_after_finish: true, expected_auth_storage_failure_tested: true, setup_visibility_persists: true, settings_wifi_pair_without_setup: true, wifi_mode_first_client_only_connection: true, setup_sound_drafts_survive_refresh: true, audio_previews_match_relay_draft: true, page_errors: errors, unexpected_requests: unexpected,
+      audio_preview_outputs: previews.map(p => p.audio_output), setup_live_pins_only_after_finish: true, setup_auth_only_after_finish: true, expected_auth_storage_failure_tested: true, setup_only_until_initial_setup_finishes: true, settings_wifi_pair_without_setup: true, wifi_mode_first_client_only_connection: true, setup_sound_drafts_survive_refresh: true, audio_previews_match_relay_draft: true, page_errors: errors, unexpected_requests: unexpected,
       initial_setup_only_until_finish: true, initial_setup_overrides_saved_tabs: true,
-      initial_setup_stays_locked_after_pairing_and_save_failure: true, reopened_setup_keeps_navigation: true,
+      initial_setup_stays_locked_after_pairing_and_save_failure: true,
       page_horizontal_overflow: false };
     fs.writeFileSync(path.join(images, 'screenshot-manifest.json'), JSON.stringify(report, null, 2) + '\n');
     console.log(JSON.stringify(report));

@@ -21,9 +21,10 @@ The references are stored locally and do not represent a photograph of the compl
 
 Initial setup exposes only Setup until Finish successfully saves sound, wiring
 and any requested sign-in settings. Pairing, reloads and restarts do not unlock
-the other pages. After completion, Home, Sound and Settings become available;
-reopening Setup later keeps those pages available. The README's setup images
-show this initial workflow. Other Setup captures show the reopened wizard.
+the other pages, and the navigation stays hidden. After completion, Home, Sound
+and Settings become available and Setup does not return. The README's setup
+images show this initial workflow. Other Setup captures re-enter initial setup
+in the synthetic fixtures to show each sound mode and sign-in state.
 
 The Sound and Setup captures show all ten numbered melodies and gong patterns.
 Doorbell rings follow the Reolink ringtone slot; the local choice sets the
@@ -55,8 +56,7 @@ alternatives, as explained in the [original firmware audit](vendor-sounds.md).
 | `images/web-setup-wifi.png` | Setup step 1: WiFi scan/connect |
 | `images/web-setup-pairing.png` | Setup step 2: pairing instructions and Start pairing |
 | `images/ui-setup-hidden-desktop.png`, `images/ui-setup-hidden-mobile.png` | Home with Setup hidden after completion |
-| `images/ui-settings-setup-hidden-desktop.png`, `images/ui-settings-setup-hidden-mobile.png` | General: Show Setup tab off |
-| `images/ui-settings-setup-shown-desktop.png`, `images/ui-settings-setup-shown-mobile.png` | General: Show Setup tab on and Open Setup |
+| `images/ui-settings-setup-hidden-desktop.png`, `images/ui-settings-setup-hidden-mobile.png` | General settings after setup, without a Setup option |
 | `images/ui-settings-wifi-desktop.png`, `images/ui-settings-wifi-mobile.png` | WiFi mode first, then client connection/scan controls in Settings |
 | `images/ui-settings-wifi-ap-desktop.png`, `images/ui-settings-wifi-ap-mobile.png` | Access point mode: hotspot settings, client connection hidden |
 | `images/ui-settings-wifi-off-desktop.png`, `images/ui-settings-wifi-off-mobile.png` | Off mode: recovery instructions, client connection hidden |
