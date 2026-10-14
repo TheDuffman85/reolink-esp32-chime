@@ -138,7 +138,7 @@ manifest. Its synthetic version labels follow `firmware/version.json`.
 README images are copies of the verified captures named
 `readme-<version>-<ui-hash>-<view>.png`, where `ui-hash` is the first twelve
 characters of the embedded UI's SHA-256. The generator updates image links in
-the project README and screenshot gallery. These URLs refresh when the UI
+the project README. These URLs refresh when the UI
 changes, even without a firmware version change, avoiding stale cached images.
 The manifest records each README image's source capture, UI hash and firmware
 version, plus the ten-slot and mode-switch checks.

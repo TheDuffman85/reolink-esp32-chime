@@ -9,8 +9,7 @@ CC1101; WiFi provides setup, control, updates and Home Assistant integration.
 
 The screenshots render the firmware's embedded UI with **synthetic demonstration
 data** and the firmware version from `firmware/version.json`. They do not show
-a live device. All images are included locally; the
-[full UI screenshot gallery](firmware/docs/ui-changes.html) includes desktop and phone views.
+a live device. All images are included locally.
 
 ## Compatibility and features
 

@@ -845,8 +845,8 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
       assert.ok(capture,original);fs.copyFileSync(path.join(images,original),path.join(images,file));
       readmeScreenshots[view]=file;results.push({...capture,file,source_file:original});
     }
-    for (const document of [path.join(root,'../README.md'),path.join(root,'docs/ui-changes.html')]) {
-      // The gallery is optional when running the harness in a scratch directory.
+    for (const document of [path.join(root,'../README.md')]) {
+      // The README is optional when running the harness in a scratch directory.
       if (!fs.existsSync(document)) continue;
       const text=fs.readFileSync(document,'utf8');
       const updated=text.replace(/readme-\d+\.\d+\.\d+-(?:[0-9a-f]{12}-)?([a-z-]+)\.png/g,(file,view)=>{
