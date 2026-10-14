@@ -78,6 +78,7 @@ Returns a flat status object, plus the nested `mute` object:
 | `dropped`, `invalid_lengths`, `false_syncs`, `radio_resets` | Receiver error/reset counters |
 | `rings`, `last_ring_ms`, `ring_seq`, `gong_active`, `gong_ready`, `storage_ok` | Ring counters, last uptime or null, output and storage state |
 | `auth_enabled`, `auth_user` | Authentication state |
+| `setup_visible` | Device-wide Setup tab visibility, persisted across restarts |
 | `mute` | `{active, permanent, remaining_s}`; remaining seconds rounded up |
 | `time_synced`, `epoch`, `mqtt` | Clock state, UTC seconds or null and MQTT connection state |
 
@@ -104,7 +105,7 @@ fraction of the UTC receive time. Without clock sync `epoch` is null and
 Type-1 pairing payloads are redacted. CRC strings are `TI-8005 candidate`,
 `CCITT diagnostic only` or `bad`; only TI CRC is accepted for protocol actions.
 
-## Radio, buzzer and manual profile settings
+## Radio, audio and manual profile settings
 
 ### GET / POST `/api/settings`
 
@@ -118,9 +119,9 @@ GET returns the saved values below plus `wifi_password_set`, `profile`,
 | `auto_trim` | Boolean | Automatic tuning can replace manual trim |
 | `rx_mode` | Integer 0/1 | CC1101 packet engine / ESP32 bit sampling |
 | `polarity` | Integer 0/1/2 | Auto / normal / inverted RX |
-| `melody` | Integer 0–2 | Local PWM melody |
-| `volume` | Integer 0–100 | **Buzzer PWM level**, distinct from app volume |
-| `relay` | Boolean | Extra relay pulse in buzzer mode |
+| `melody` | Integer 0–2 | Local PWM/DAC melody |
+| `volume` | Integer 0–100 | **PWM/DAC audio level**, distinct from app volume |
+| `relay` | Boolean | Extra relay pulse in PWM/DAC modes |
 | `relay_ms` | Integer 50–2000 | Extra pulse length |
 | `ssid` | String ≤32 bytes | Save station SSID; restart for this route's WiFi changes |
 | `wifi_password` | Empty or string 8–63 bytes | Empty/missing preserves password |
@@ -149,28 +150,42 @@ GET returns `name`, `volume` (0–4), `led` (0/1), `joined`, `doorbell_id`,
 POST accepts only `name` (1–32 bytes, no control characters), `volume` (0–4)
 and `led` (boolean or supported boolean value). Name/volume/LED persist and
 the doorbell reads them on its next configuration request. This is **app volume**,
-not the PWM percentage in `/api/settings`.
+not the audio percentage in `/api/settings`.
 
 ### GET / POST `/api/gong`
 
+New configurations default to Gong. The UI order is **Gong, Audio, None**.
+Audio uses a separate `audio_output` setting (PWM or DAC), remembered even
+while Gong or None is selected. Legacy saved type 0 migrates to Audio/PWM and
+type 3 to Audio/DAC; saved Gong/None choices, GPIO assignments and levels remain.
+The GPIO JSON key is `audio`, and MQTT state, commands and ring events use
+`audio_level`. Home Assistant discovery replaces the old level entity with
+Audio level and exposes Sound mode plus a separate Audio output selector.
+
 | Field | Values |
 |---|---|
-| `type` | 0 buzzer, 1 relay gong, 2 None/silent |
+| `type` | 0 Audio, 1 Gong (default), 2 None/silent |
+| `audio_output` | 0 PWM (default), 1 DAC |
 | `pattern` | 0 Ding-dong, 1 Double, 2 Triple, 3 Long ring, 4 Insistent |
 | `pulse_ms` | 50–2000 |
 | `gap_ms` | 100–3000 |
 
 POST accepts only these integer fields. Selecting relay type without a relay
-GPIO returns 409. GET also returns `relay_available` and `buzzer_available`.
+GPIO returns 409. Audio requires an audio GPIO; DAC output requires GPIO25 or
+GPIO26. Invalid output wiring returns 409. Independent name, LED, volume and
+mute changes remain available if an optional output pin is disconnected. GET also returns `relay_available`,
+`pwm_available` and `dac_available` for the active GPIO map.
 
 ### POST `/api/gong/test`
 
 Empty body or `{}` tests saved output at full app volume without saving
 settings. Local tests bypass owner mute. A nonempty JSON object supplies
-temporary overrides: `type` 0–2, `melody` 0–2, `volume` **0–100 PWM level**,
-`pattern` 0–4, `pulse_ms` 50–2000 and `gap_ms` 100–3000. Out-of-range preview
+temporary overrides: `type` 0–2, `audio_output` 0–1, `melody` 0–2, `volume` **0–100 audio level**,
+`pattern` 0–4, `pulse_ms` 50–2000, `gap_ms` 100–3000, `extra_relay` (boolean)
+and `extra_relay_ms` 50–2000. Audio previews use the selected extra relay
+settings; an enabled extra relay needs a Relay GPIO. Out-of-range preview
 fields are ignored; this route does not strictly reject malformed/unknown
-preview fields. No relay GPIO returns 409; busy/unavailable output returns
+preview fields. Missing/unsupported output GPIO returns 409; busy/unavailable output returns
 503. None mode returns success and logs a silent event.
 
 ### GET / POST `/api/mute`
@@ -186,8 +201,9 @@ on restart; permanent mute survives. This setting is separate from app volume 0.
 GET returns `uptime_ms`, `epoch` (UTC seconds/null), `last_id`,
 `rings_since_start` and `rings` (up to 50 entries, **newest first**).
 Entries contain `id`, `source`, `outcome`, numeric `type` and `sound`,
-`ms`, `epoch`, `previous_boot`, `volume`, `buzzer_level`, `preview`.
-Doorbell entries add `tone` (received ringtone parameter) and `rssi_dbm`.
+`ms`, `epoch`, `previous_boot`, `volume`, `audio_level`, `preview`.
+Audio entries also contain numeric `audio_output` (0 PWM, 1 DAC), including
+legacy entries restored from flash. Doorbell entries add `tone` (received ringtone parameter) and `rssi_dbm`.
 
 Sources are `doorbell`, `web`, `button`, `mqtt`, `serial`; outcomes are
 `played`, `muted`, `silent`, `busy`, `chime_muted`. History is saved after a
@@ -202,22 +218,75 @@ increasing; the RF ring counter since startup is separate.
 Returns `pins` (active), `saved` (persisted) and `defaults`, each containing:
 
 ```json
-{"sck":18,"miso":19,"mosi":23,"cs":5,"clock":4,"data":16,"buzzer":25,"relay":26,"led":2,"button":0,"relay_active_low":false}
+{"sck":18,"miso":19,"mosi":23,"cs":5,"clock":4,"data":16,"audio":25,"relay":26,"led":2,"button":0,"relay_active_low":false}
 ```
 
 ### POST `/api/pins/check`, `/api/pins`, `/api/pins/reset`
 
 Check and save accept a partial flat GPIO object, merged with the **active**
 map. Check returns `{"ok":true|false,"issues":[{"role":"...","level":"error|warning|info","text":"..."}]}`
-without persistence. Valid save adds a message and requires restart to apply.
+without persistence. Valid save adds a message and applies the map live without restarting.
 Invalid save returns 400 with issues. Reset takes no body and saves defaults,
-also requiring restart.
+applying the default map live.
 
-Pin integers must be −1..39, then pass hardware validation. Only buzzer, relay,
+Pin integers must be −1..39, then pass hardware validation. Only audio, relay,
 LED and button allow −1. Duplicate assignments, nonexistent pins, GPIO6–11,
 UART GPIO1/3 and output roles on input-only GPIO34–39 are rejected. Button
 GPIO34–39 needs an external pull-up. Strap and PSRAM pins can produce warnings.
+With Audio/DAC selected, a connected `audio` pin other than GPIO25/26 is an
+error; −1 is allowed with a warning that Audio is disconnected. Audio and Relay
+cannot share a GPIO. The wiring UI uses one shared Audio output assignment and
+shows the selected Audio method.
 `relay_active_low` must be boolean. See [WIRING.md](firmware/WIRING.md).
+
+## Setup visibility
+
+`GET /api/status` includes `setup_visible`.
+
+### POST `/api/setup`
+
+Accepts exactly `{"visible":true}` or `{"visible":false}` and returns the saved
+`{visible}` value. Authentication and CSRF checks apply. The preference persists
+on the chime across restarts and applies to every browser; no reboot is needed.
+New devices show Setup until Finish. Existing paired installations default to
+hidden when upgrading. Settings → General can show or hide the tab explicitly.
+The wizard hides only after sound/wiring and any requested authentication saves
+succeed. A failed save keeps the final review available for retry. WiFi and
+pairing remain independently available in Settings while Setup is hidden.
+
+## Setup sound and output wiring
+
+### POST `/api/setup/sound/check` and `/api/setup/sound`
+
+Both accept the same object:
+
+```json
+{"chime":{"name":"Hallway","type":0,"audio_output":1,"melody":0,"pattern":0,"extra_relay":false},"pins":{"audio":26,"relay":-1,"relay_active_low":false}}
+```
+
+`chime` accepts only name, type, audio_output, melody, pattern and extra_relay,
+with the ranges above. `pins` accepts only audio, relay and relay_active_low,
+merged into the saved full GPIO map. Other fields are rejected. Hardware
+validation checks duplicates and all reserved pins, including unchanged roles.
+The selected output must have usable GPIOs; an enabled extra relay pulse
+requires a Relay GPIO.
+
+Check returns `{ok, issues, pins_changed, restart_required:false}` without
+saving. The wizard uses it while preparing Step 3, then offers optional
+authentication in Step 4 and final review in Step 5. Sound, wiring and sign-in
+changes wait until **Finish** calls the setup save route. If authentication was configured, Finish
+then calls `/api/auth`; Skip omits that call. After those saves succeed,
+Finish calls `/api/setup` with `{"visible":false}`. Credential validation catches
+invalid usernames, short passwords and mismatched confirmation before review.
+A failed sign-in save keeps the review open for retry and reports that sound
+and wiring were already saved. The current browser receives the normal new
+session cookie when sign-in is enabled or credentials change.
+Save validates both groups before writing, applies new GPIOs live with playback
+inhibited, and returns the same fields plus a message. No ESP32 reboot is
+scheduled. Radio remapping releases SPI and reinitializes reception, while
+output/LED/button roles are reset to their configured idle/input states.
+Update/restart or an active radio handshake can return 409; storage failures
+return 500. Authentication and CSRF requirements apply to both routes.
 
 ## WiFi
 
@@ -343,7 +412,7 @@ Let `<base>` be the configured `topic` or returned `default_topic`.
 Example retained state:
 
 ```json
-{"type":"Buzzer","melody":"Ding dong","pattern":"Ding-dong","buzzer_level":35,"volume":4,"led":true,"extra_relay":false,"extra_relay_ms":300,"pulse_ms":300,"gap_ms":700,"name":"Hallway","mute":false,"mute_minutes":0}
+{"type":"Gong","audio_output":"PWM","melody":"Ding dong","pattern":"Ding-dong","audio_level":35,"volume":4,"led":true,"extra_relay":false,"extra_relay_ms":300,"pulse_ms":300,"gap_ms":700,"name":"Hallway","mute":false,"mute_minutes":0}
 ```
 
 Status fields: `linked`, `paired`, `radio_ok`, `rings`, `last_ring` (UTC ISO
@@ -352,19 +421,21 @@ string or literal `None`), `muted`, `mute_until` (ISO string or `None`), `ip`,
 
 Event fields: `event_type` (`ring` for doorbell, `test` otherwise), `id`,
 `source`, `outcome`, labeled `type`, labeled `sound` (omitted for None),
-`time` (UTC ISO/null), `volume`, `buzzer_level`, `preview`; doorbell events
+`time` (UTC ISO/null), `volume`, `audio_level`, `preview`; doorbell events
 add `tone` and `rssi_dbm`. MQTT uses names for type/sound, while HTTP ring
-history uses integer indices and includes uptime/previous-boot fields.
+history uses integer indices and includes uptime/previous-boot fields. Audio
+events include `audio_output` (PWM or DAC); it is omitted for Gong/None events.
 
 ### Commands and validation
 
 | `/set` field | Accepted values |
 |---|---|
-| `type` | 0–2 or Buzzer / Gong / None |
+| `type` | 0–2 or Audio / Gong / None |
+| `audio_output` | 0–1 or PWM / DAC |
 | `melody` | 0–2 or Ding dong / Ascending / Double beep |
 | `pattern` | 0–4 or Ding-dong / Double / Triple / Long ring / Insistent |
 | `volume` | 0–4 app volume |
-| `buzzer_level` | 0–100 PWM percentage |
+| `audio_level` | 0–100 PWM/DAC audio percentage |
 | `led`, `extra_relay`, `mute` | Boolean, 0/1, ON/OFF or true/false text |
 | `extra_relay_ms`, `pulse_ms` | 50–2000 |
 | `gap_ms` | 100–3000 |
@@ -377,7 +448,7 @@ cannot modify credentials, radio/GPIOs, WiFi, pairing, OTA or reboot. Use
 non-retained commands for one-shot play requests.
 
 `/play` with `{}` plays current output at app volume and obeys owner mute.
-Optional `type`, `melody`, `pattern` and `volume` (0–4) override only this
+Optional `type`, `audio_output`, `melody`, `pattern` and `volume` (0–4) override only this
 play. `force:true` bypasses owner mute but does not configure a missing output
 or override app volume zero. Success/error is published to `/result`;
 an outcome is also logged/published. The handler treats empty or malformed
@@ -393,11 +464,11 @@ play JSON as a default play, so validate payloads in clients.
 
 ### Home Assistant discovery
 
-Discovery publishes 21 retained configs under
+Discovery publishes 22 retained configs under
 `<prefix>/<component>/reolink_chime_<device-id>/<object>/config` and republishes
 when `<prefix>/status` is `online`. Entities cover doorbell events, a five-second
-Ringing indicator, Play button, permanent/timed mute, mute-until time, gong/
-melody/pattern, volume/PWM level, LED/extra relay, timings/name and diagnostics.
+Ringing indicator, Play button, permanent/timed mute, mute-until time, sound mode/
+audio output/melody/pattern, volume/audio level, LED/extra relay, timings/name and diagnostics.
 Disabling discovery publishes empty retained configs to remove entities.
 NTP supplies UTC event/sensor timestamps; RF reception does not depend on MQTT
 or clock synchronization.

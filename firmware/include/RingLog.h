@@ -25,7 +25,7 @@ struct RingEvent {
   uint8_t source = 0, outcome = 0;
   uint8_t type = 0, sound = 0; // Gong type and melody/pattern index.
   uint8_t volume = 0;          // Chime volume 0..4 used.
-  uint8_t level = 0;           // Buzzer level 0..100.
+  uint8_t level = 0;           // Audio level 0..100.
   int8_t rssi = 0;             // Doorbell frames only, dBm.
   uint8_t flags = 0;
 };

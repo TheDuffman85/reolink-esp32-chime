@@ -3,7 +3,8 @@
 #include <cstring>
 
 namespace chime {
-const char *const GongKindNames[GongKinds] = {"Buzzer", "Gong", "None"};
+const char *const GongKindNames[GongKinds] = {"Audio", "Gong", "None"};
+const char *const AudioOutputNames[AudioOutputs] = {"PWM", "DAC"};
 const char *const MelodyNames[Melodies] = {"Ding dong", "Ascending", "Double beep"};
 const char *const PatternNames[Patterns] = {"Ding-dong", "Double", "Triple", "Long ring", "Insistent"};
 
@@ -63,16 +64,19 @@ const char *applyChime(JsonObjectConst update, ChimeState &state) {
     JsonVariantConst value = pair.value();
     long number; bool flag; int pick;
     if (!strcmp(key, "type")) {
-      if ((pick = chimeEnum(value, GongKindNames, GongKinds)) < 0) return "type: Buzzer, Gong or None";
+      if ((pick = chimeEnum(value, GongKindNames, GongKinds)) < 0) return "type: Audio, Gong or None";
       next.type = uint8_t(pick);
+    } else if (!strcmp(key, "audio_output")) {
+      if ((pick = chimeEnum(value, AudioOutputNames, AudioOutputs)) < 0) return "audio_output: PWM or DAC";
+      next.audioOutput = uint8_t(pick);
     } else if (!strcmp(key, "melody")) {
       if ((pick = chimeEnum(value, MelodyNames, Melodies)) < 0) return "melody: Ding dong, Ascending or Double beep";
       next.melody = uint8_t(pick);
     } else if (!strcmp(key, "pattern")) {
       if ((pick = chimeEnum(value, PatternNames, Patterns)) < 0) return "pattern: Ding-dong, Double, Triple, Long ring or Insistent";
       next.pattern = uint8_t(pick);
-    } else if (!strcmp(key, "buzzer_level")) {
-      if (!integer(value, 0, 100, number)) return "buzzer_level: 0 to 100";
+    } else if (!strcmp(key, "audio_level")) {
+      if (!integer(value, 0, 100, number)) return "audio_level: 0 to 100";
       next.level = uint8_t(number);
     } else if (!strcmp(key, "volume")) {
       if (!integer(value, 0, 4, number)) return "volume: 0 (mute) to 4";
@@ -118,9 +122,10 @@ const char *applyChime(JsonObjectConst update, ChimeState &state) {
 
 void writeChime(const ChimeState &state, JsonObject out) {
   out["type"] = GongKindNames[state.type < GongKinds ? state.type : 0];
+  out["audio_output"] = AudioOutputNames[state.audioOutput < AudioOutputs ? state.audioOutput : 0];
   out["melody"] = MelodyNames[state.melody < Melodies ? state.melody : 0];
   out["pattern"] = PatternNames[state.pattern < Patterns ? state.pattern : 0];
-  out["buzzer_level"] = state.level; out["volume"] = state.volume;
+  out["audio_level"] = state.level; out["volume"] = state.volume;
   out["led"] = state.led; out["extra_relay"] = state.extraRelay;
   out["extra_relay_ms"] = state.extraRelayMs;
   out["pulse_ms"] = state.pulseMs; out["gap_ms"] = state.gapMs;

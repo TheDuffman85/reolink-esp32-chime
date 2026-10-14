@@ -1,6 +1,6 @@
 # Firmware documentation images
 
-Updated 2026-10-13. The illustrated [project README](../../README.md)
+Updated 2026-10-14. The illustrated [project README](../../README.md)
 uses the hardware references and current UI captures listed below.
 
 ## Hardware pinout references
@@ -22,13 +22,28 @@ The references are stored locally and do not represent a photograph of the compl
 | File | View |
 |---|---|
 | `images/web-status.png` | Home: status, Mute/Play chime and ring log |
-| `images/web-sound.png` | Sound: buzzer melodies, volume, extra relay pulse and LED |
-| `images/web-sound-relay.png` | Sound: existing gong, strike patterns and timing |
-| `images/web-sound-none.png` | Sound: gong type None (silent) |
+| `images/web-sound.png` | Sound: Audio mode with PWM output, melodies, volume, extra relay pulse and LED |
+| `images/web-sound-dac.png` | Sound: Audio mode with DAC output, shared melodies and level |
+| `images/web-sound-relay.png` | Sound: Gong mode, strike patterns and timing |
+| `images/web-sound-none.png` | Sound: mode None (silent) |
 | `images/web-muted.png` | Home while muted for 45 minutes |
 | `images/web-status-light.png` | Home in the light theme |
+| `images/web-setup-sound.png` | Setup: sound and output wiring |
+| `images/ui-auth-off-desktop.png`, `images/ui-auth-off-mobile.png` | Setup step 4: optional sign-in off |
+| `images/ui-auth-enabled-desktop.png`, `images/ui-auth-enabled-mobile.png` | Setup step 4: new username/password, masked dummy password |
+| `images/ui-auth-existing-desktop.png`, `images/ui-auth-existing-mobile.png` | Setup step 4: keeping a saved password |
+| `images/ui-auth-review-desktop.png`, `images/ui-auth-review-mobile.png` | Setup step 5: sign-in choice in final review |
+| `images/web-setup-review.png` | Setup: last step, reviewing GPIO changes before Finish |
+| `images/web-setup-complete.png` | Setup: live GPIOs applied, sound testing enabled |
 | `images/web-setup-wifi.png` | Setup step 1: WiFi scan/connect |
 | `images/web-setup-pairing.png` | Setup step 2: pairing instructions and Start pairing |
+| `images/ui-setup-hidden-desktop.png`, `images/ui-setup-hidden-mobile.png` | Home with Setup hidden after completion |
+| `images/ui-settings-setup-hidden-desktop.png`, `images/ui-settings-setup-hidden-mobile.png` | General: Show Setup tab off |
+| `images/ui-settings-setup-shown-desktop.png`, `images/ui-settings-setup-shown-mobile.png` | General: Show Setup tab on and Open Setup |
+| `images/ui-settings-wifi-desktop.png`, `images/ui-settings-wifi-mobile.png` | WiFi mode first, then client connection/scan controls in Settings |
+| `images/ui-settings-wifi-ap-desktop.png`, `images/ui-settings-wifi-ap-mobile.png` | Access point mode: hotspot settings, client connection hidden |
+| `images/ui-settings-wifi-off-desktop.png`, `images/ui-settings-wifi-off-mobile.png` | Off mode: recovery instructions, client connection hidden |
+| `images/ui-settings-pair-desktop.png`, `images/ui-settings-pair-mobile.png` | Full pairing controls directly in Settings with Setup hidden |
 | `images/web-settings.png` | Settings: section list and General |
 | `images/web-settings-ha.png` | Settings: MQTT (Home Assistant) |
 | `images/web-settings-security.png` | Settings: Sign-in and sessions |
@@ -50,10 +65,28 @@ added by the generator; the embedded firmware itself remains unchanged. No actua
 password, AES key or device token appears in the captures.
 
 Desktop captures use 1100 px width; the mobile view uses 390 px. Desktop captures include whole pages so all controls are visible; the phone
-capture keeps the fixed navigation at the bottom of its viewport. Every tab is checked at **390, 768 and
+standard capture keeps the fixed navigation at the bottom of its viewport.
+The `ui-*.png` change captures include complete desktop and phone pages.
+Full phone captures use the page height as the viewport so fixed navigation
+lands at the bottom and does not cover any controls. Every tab is checked at **390, 768 and
 1100 px** for horizontal page overflow; scrolling within the packet table is
-intentional. The generator rejects JavaScript/console errors and unexpected
-requests. All network requests are intercepted, including the UI's automatic
+intentional. Gong/Audio/None and both Audio methods are checked at each width. Preview
+requests are checked for the selected method in Sound and Setup; saving and
+reloading across mode changes preserves that method. The shared Audio GPIO
+selector and DAC pin restrictions are also checked. Setup is checked for
+validation failures, Back/Continue without saving, and live GPIO application
+only on the final Finish click. The five-step wizard also checks optional
+sign-in off/on, Skip preserving existing settings, password confirmation,
+keeping saved passwords, and recovery from a failed authentication save.
+Setup melody/pattern drafts survive status/settings refreshes. Audio previews
+check the pending extra-relay choice and pulse length, and a DAC method remembered
+in Gong selects a valid DAC GPIO when switching to Audio. One intentional `/api/auth` HTTP 500 response tests retry handling.
+The checks also cover Setup hiding only after successful Finish, showing/hiding
+it in General, preference persistence on reload, ignoring a stale saved Setup
+tab, fresh-device onboarding, direct WiFi connection/pairing in Settings, and
+recovering an unpaired device while Setup stays hidden.
+All other JavaScript/console errors and unexpected
+requests are rejected. All network requests are intercepted, including the UI's automatic
 POST `/api/pins/check` validation; no device settings are saved and no device is
 contacted. The source SHA-256, fixture provenance, viewports and results are in
 [images/screenshot-manifest.json](images/screenshot-manifest.json).
@@ -75,7 +108,13 @@ Chromium executable when it differs from Playwright's default browser.
 NODE_PATH=/path/to/node_modules SCREENSHOT_BROWSER_EXE=/path/to/chromium node firmware/tools/screenshots.cjs
 ```
 
-The generator replaces the `web-*.png` files and screenshot manifest.
+The generator replaces the `web-*.png` and `ui-*.png` files and screenshot
+manifest. Its synthetic version labels follow `firmware/version.json`.
+README images are copies of the verified captures named
+`readme-<version>-<view>.png`; the generator updates the README's versioned
+image paths on subsequent runs. These distinct URLs avoid stale cached images
+from earlier firmware screenshots. The manifest records each README image's
+source capture and firmware version.
 If the browser cannot launch under a restricted execution sandbox, use an
 approved local browser environment. Device firmware, OTA package and hardware
 pinout references are unaffected by screenshot generation.

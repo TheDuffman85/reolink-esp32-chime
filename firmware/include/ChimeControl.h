@@ -4,12 +4,16 @@
 #include <cstdint>
 
 namespace chime {
-// Persisted gong type values (NVS "gongx"). None plays nothing: rings are
-// only logged and reported, e.g. to Home Assistant.
-enum class GongKind : uint8_t { Buzzer = 0, Relay = 1, None = 2 };
-constexpr uint8_t GongKinds = 3, Melodies = 3, Patterns = 5;
+// User-facing modes are independent of the audio output method. Legacy NVS
+// and ring history use type 3 for DAC; migrate it to Audio with DAC output.
+enum class GongKind : uint8_t { Audio = 0, Relay = 1, None = 2 };
+enum class AudioOutput : uint8_t { Pwm = 0, Dac = 1 };
+constexpr uint8_t GongKinds = 3, AudioOutputs = 2, Melodies = 3, Patterns = 5;
+constexpr uint8_t modeFromStoredType(uint8_t type) { return type == 3 ? 0 : type; }
+constexpr uint8_t audioFromStoredType(uint8_t type) { return type == 3 ? 1 : 0; }
 constexpr uint16_t MaxMuteMinutes = 1440;
 extern const char *const GongKindNames[GongKinds];
+extern const char *const AudioOutputNames[AudioOutputs];
 extern const char *const MelodyNames[Melodies];
 extern const char *const PatternNames[Patterns];
 
@@ -17,7 +21,7 @@ extern const char *const PatternNames[Patterns];
 // deliberately excludes administrative settings (WiFi, login, radio, GPIO,
 // pairing), so remote interfaces built on it, such as MQTT, cannot reach them.
 struct ChimeState {
-  uint8_t type = 0, melody = 0, level = 35, volume = 4, pattern = 0;
+  uint8_t type = 1, audioOutput = 0, melody = 0, level = 35, volume = 4, pattern = 0;
   bool led = true, extraRelay = false;
   uint16_t extraRelayMs = 300, pulseMs = 300, gapMs = 700;
   char name[33] = "Reolink Chime";

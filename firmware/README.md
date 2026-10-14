@@ -138,14 +138,16 @@ expect saved settings and pairing to be cleared.
 |---|---|
 | `main.cpp`, `App.h` | Loop, WiFi/AP/mDNS, clock, button, LED, serial and text log |
 | `LinkService.cpp` | RX/TX, AES, profile persistence, AFC and ring/app dispatch |
-| `Hardware.cpp` | CC1101 SPI/FIFO/bit sampling, GPIO validation and playback |
+| `Hardware.cpp` | CC1101 SPI/FIFO/bit sampling, GPIO validation, relay/PWM/DAC playback |
+| `Audio.h` | Portable DAC sine samples, phase increments and DAC pin constraints |
 | `Protocol.cpp` | PN9, CRC, frame parsing and ring retry cache |
 | `Link.cpp` | Portable pairing/join/rejoin/heartbeat state machine |
 | `AppProtocol.cpp` | Portable V2 name/volume/LED/config/version handlers |
 | `Identity.h` | Signed-positive node ID generation |
 | `Band.h`, `Afc.cpp` | Band selection and frequency-trim tracker |
 | `Settings.cpp`, `WifiConfig.cpp` | Validation, persistence and migration |
-| `ChimeService.cpp`, `ChimeControl.cpp` | Playback, mute and remote-safe controls |
+| `ChimeService.cpp`, `ChimeControl.cpp` | Playback, mute, live GPIO application and remote-safe controls |
+| `SetupSound.cpp` | Restricted setup sound/wiring JSON validation |
 | `RingLog.cpp` | Portable 50-entry history and NVS image |
 | `Web.cpp`, `WebAuth.cpp`, `Auth.cpp` | HTTP/OTA, sessions, CSRF and throttle |
 | `Mqtt.cpp`, `MqttService.cpp` | MQTT worker, state/events/commands and discovery |
@@ -157,8 +159,16 @@ Settings schema 2 preserves WiFi credentials, RF parameters, identity and profil
 Schema-1 profiles migrate as passive. Separate NVS namespaces hold app config
 (`chimeapp`), gong (`gongx`), GPIO (`pins`), permanent mute (`mute`), authentication
 (`auth`), integrations (`integrations`), ring history (`ringlog`), receiver (`radio`),
-automatic trim (`afc`) and WiFi mode (`wifi`). Secrets are in ordinary NVS;
-settings GETs omit passwords/keys. Ring history writes after three seconds of
+automatic trim (`afc`), WiFi mode (`wifi`) and UI preferences (`webui`, with
+Setup visibility in the `setup` key).
+Setup hides after Finish and can be shown again under Settings → General.
+Secrets are in ordinary NVS; settings GETs omit passwords/keys. Gong is the default for new
+configurations. Public modes are 0 Audio, 1 Gong and 2 None; Audio has a separate
+method (0 PWM, 1 DAC) in the `gongx/audioout` NVS key, remembered across mode
+changes. Legacy type 0 migrates to Audio/PWM and type 3 to Audio/DAC. Ring history
+retains its compact legacy backend IDs internally and exposes the new mode plus
+Audio method in JSON. The Audio output GPIO retains the former tone-output slot
+in the ten-byte pin map. Ring history writes after three seconds of
 quiet reception/playback. Timed mute, packet history and text logs are RAM-only.
 Flash writes/OTA pause reception. Check dropped/error counts under WiFi load.
 

@@ -69,11 +69,14 @@ void announceMqtt() {
   { JsonObject o = entity("play", "Play chime", "mdi:play", nullptr);
     o["cmd_t"] = "~/play"; o["pl_prs"] = "{}";
     send("button", "play"); }
-  select("gong_type", "Gong type", "mdi:bell-cog", "type", chime::GongKindNames, chime::GongKinds);
+  const char *const outputChoices[] = {"Gong", "Audio", "None"};
+  select("gong_type", "Sound mode", "mdi:bell-cog", "type", outputChoices, chime::GongKinds);
+  select("audio_output", "Audio output", "mdi:audio-input-rca", "audio_output", chime::AudioOutputNames, chime::AudioOutputs);
   select("melody", "Melody", "mdi:music", "melody", chime::MelodyNames, chime::Melodies);
   select("pattern", "Gong pattern", "mdi:bell-ring-outline", "pattern", chime::PatternNames, chime::Patterns);
   number("volume", "Chime volume", "mdi:volume-high", "volume", 0, 4, 1, nullptr, nullptr);
-  number("buzzer_level", "Buzzer level", "mdi:volume-source", "buzzer_level", 0, 100, 5, "%", "config");
+  mqtt.publish(String(integrations.prefix) + "/number/" + node + "/buzzer_level/config", "", true);
+  number("audio_level", "Audio level", "mdi:volume-source", "audio_level", 0, 100, 5, "%", "config");
   number("extra_relay_ms", "Extra relay pulse length", "mdi:timer-outline", "extra_relay_ms", 50, 2000, 50, "ms", "config");
   number("pulse_ms", "Strike length", "mdi:timer-outline", "pulse_ms", 50, 2000, 25, "ms", "config");
   number("gap_ms", "Strike pause", "mdi:timer-pause-outline", "gap_ms", 100, 3000, 50, "ms", "config");
@@ -127,7 +130,7 @@ void handleMqtt(const MqttMessage &message) {
     mqttResult(updateChime(doc.as<JsonObjectConst>(), "mqtt"));
     lastMqttState = ""; // Confirm the (possibly unchanged) state to optimistic clients.
   } else if (topic == mqttBase + "/play") {
-    uint8_t volume = chimeApp.volume; uint8_t flags = 0; bool force = false;
+    uint8_t volume = chimeApp.volume, mode = gongx.type, output = gongAudioOutput; uint8_t flags = 0; bool force = false;
     GongRequest request = gongRequest(volume);
     if (message.length && !deserializeJson(doc, message.payload, message.length) && doc.is<JsonObject>()) {
       int pick;
@@ -136,8 +139,12 @@ void handleMqtt(const MqttMessage &message) {
         force = doc["force"];
       }
       if (doc.containsKey("type")) {
-        if ((pick = chime::chimeEnum(doc["type"], chime::GongKindNames, chime::GongKinds)) < 0) { mqttResult("type: Buzzer, Gong or None"); return; }
-        request.type = static_cast<GongType>(pick); flags = chime::RingPreview;
+        if ((pick = chime::chimeEnum(doc["type"], chime::GongKindNames, chime::GongKinds)) < 0) { mqttResult("type: Audio, Gong or None"); return; }
+        mode = pick; flags = chime::RingPreview;
+      }
+      if (doc.containsKey("audio_output")) {
+        if ((pick = chime::chimeEnum(doc["audio_output"], chime::AudioOutputNames, chime::AudioOutputs)) < 0) { mqttResult("audio_output: PWM or DAC"); return; }
+        output = pick; flags = chime::RingPreview;
       }
       if (doc.containsKey("melody")) {
         if ((pick = chime::chimeEnum(doc["melody"], chime::MelodyNames, chime::Melodies)) < 0) { mqttResult("melody: unknown"); return; }
@@ -152,7 +159,8 @@ void handleMqtt(const MqttMessage &message) {
         volume = doc["volume"].as<int>(); request.tone.volume = settings.gong.volume * volume / 4; flags = chime::RingPreview;
       }
     }
-    if (request.type == GongType::Relay && pins.relay < 0) { mqttResult("No relay GPIO configured"); return; }
+    request.type = outputType(mode, output);
+    if (const char *error = outputError(request.type, pins)) { mqttResult(error); return; }
     const auto outcome = playChime(chime::RingSource::Mqtt, request, volume, flags, 0, 0, force);
     mqttResult(outcome == chime::RingOutcome::Busy ? "Gong busy or unavailable" :
       outcome == chime::RingOutcome::ChimeMuted ? "Chime is muted; send {\"force\":true} to play anyway" : nullptr);

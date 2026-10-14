@@ -2,6 +2,8 @@
 // remote-safe chime settings used by MQTT/Home Assistant.
 #include "Auth.h"
 #include "ChimeControl.h"
+#include "Audio.h"
+#include "SetupSound.h"
 #include "RingLog.h"
 #include "WifiConfig.h"
 #include <cassert>
@@ -113,19 +115,73 @@ void ringLogTests() {
 }
 
 bool same(const ChimeState &a, const ChimeState &b) {
-  return a.type == b.type && a.melody == b.melody && a.level == b.level && a.volume == b.volume &&
+  return a.type == b.type && a.audioOutput == b.audioOutput && a.melody == b.melody && a.level == b.level && a.volume == b.volume &&
     a.pattern == b.pattern && a.led == b.led && a.extraRelay == b.extraRelay &&
     a.extraRelayMs == b.extraRelayMs && a.pulseMs == b.pulseMs && a.gapMs == b.gapMs &&
     !strcmp(a.name, b.name) && a.mute == b.mute && a.muteMinutes == b.muteMinutes;
 }
 
+void setupSoundTests() {
+  ChimeState state; SetupOutputPins pins;
+  const auto apply = [&](const char *json) {
+    StaticJsonDocument<768> doc; assert(!deserializeJson(doc,json));
+    return applySetupSound(doc.as<JsonObjectConst>(),state,pins);
+  };
+  assert(!apply(R"({"chime":{"type":"Audio","audio_output":"DAC","melody":2},"pins":{"audio":26,"relay":-1}})"));
+  assert(state.type==0 && state.audioOutput==1 && state.melody==2 && pins.audio==26 && pins.relay==-1);
+  assert(!apply(R"({"chime":{"type":"Gong"},"pins":{"relay":27,"relay_active_low":true}})"));
+  assert(state.type==1 && pins.relay==27 && pins.relayActiveLow);
+  const ChimeState before=state; const SetupOutputPins beforePins=pins;
+  const char *bad[]={R"({})", R"({"chime":[],"pins":{}})",
+    R"({"chime":{"name":"New"},"pins":{"audio":"25"}})",
+    R"({"chime":{"type":0},"pins":{"relay_active_low":1}})",
+    R"({"chime":{"ssid":"x"},"pins":{}})", R"({"chime":{},"pins":{"sck":18}})",
+    R"({"chime":{"audio_output":2},"pins":{"relay":25}})",
+    R"({"chime":{},"pins":{"audio":40}})", R"({"chime":{},"pins":{"relay":-2}})",
+    R"({"chime":{},"pins":{},"restart":true})"};
+  for (const char *json:bad) {
+    assert(apply(json)); assert(same(state,before));
+    assert(pins.audio==beforePins.audio && pins.relay==beforePins.relay && pins.relayActiveLow==beforePins.relayActiveLow);
+  }
+}
+
 void chimeTests() {
+  assert(dacPin(25) && dacPin(26) && !dacPin(27) && !dacPin(-1));
+  assert(audioPhaseStep(0) == 0 && audioPhaseStep(1000) == (uint32_t(1) << 28));
+  uint32_t phase = 0; uint16_t lo = 65535, hi = 0;
+  for (int i = 0; i < 32; ++i) {
+    const uint16_t sample = dacSample(phase, 100);
+    assert((sample & 255) == 0 && dacSample(phase, 0) == 32768);
+    if (sample < lo) lo = sample;
+    if (sample > hi) hi = sample;
+    const int full = int(sample >> 8) - 128;
+    const int half = int(dacSample(phase, 50) >> 8) - 128;
+    assert(half == full / 2);
+    phase += uint32_t(1) << 27;
+  }
+  assert(lo == 256 && hi == 65280 && phase == 0);
+
   ChimeState state;
+  assert(state.type == uint8_t(GongKind::Relay));
+  assert(!apply(state, R"({"type":"Audio","audio_output":"PWM","audio_level":0})"));
+  assert(state.type == uint8_t(GongKind::Audio) && state.audioOutput == 0 && state.level == 0);
+  assert(!apply(state, R"({"audio_output":"dac","audio_level":100})"));
+  assert(state.type == uint8_t(GongKind::Audio) && state.audioOutput == 1 && state.level == 100);
+  assert(!apply(state, R"({"type":"Gong"})") && state.audioOutput == 1);
+  assert(!apply(state, R"({"type":"None"})") && state.audioOutput == 1);
+  assert(!apply(state, R"({"type":"Audio"})") && state.audioOutput == 1);
+  assert(!apply(state, R"({"audio_output":0})") && state.audioOutput == 0);
+  assert(!apply(state, R"({"audio_output":1})") && state.audioOutput == 1);
+  // Upgrade mappings preserve the mode and audio method from legacy NVS/logs.
+  for (uint8_t legacy = 0; legacy < 4; ++legacy) {
+    assert(modeFromStoredType(legacy) == (legacy == 3 ? 0 : legacy));
+    assert(audioFromStoredType(legacy) == (legacy == 3 ? 1 : 0));
+  }
   assert(!apply(state, R"({"melody":"Ascending","volume":3,"led":"OFF","type":"gong"})"));
   assert(state.melody == 1 && state.volume == 3 && !state.led && state.type == 1);
   assert(!apply(state, R"({"melody":"double_beep","pattern":"LONG-RING","type":2})"));
   assert(state.melody == 2 && state.pattern == 3 && state.type == 2);
-  assert(!apply(state, R"({"buzzer_level":55.0,"extra_relay":1,"extra_relay_ms":800,"pulse_ms":250,"gap_ms":400})"));
+  assert(!apply(state, R"({"audio_level":55.0,"extra_relay":1,"extra_relay_ms":800,"pulse_ms":250,"gap_ms":400})"));
   assert(state.level == 55 && state.extraRelay && state.extraRelayMs == 800 && state.pulseMs == 250 && state.gapMs == 400);
   assert(!apply(state, R"({"name":"Hallway"})") && !strcmp(state.name, "Hallway"));
   // Mute: permanent, timed, order-independent combination and unmute.
@@ -140,8 +196,11 @@ void chimeTests() {
   // Atomic rejection: one bad field leaves everything unchanged.
   const ChimeState before = state;
   const char *bad[] = {
-    R"({"volume":5})", R"({"volume":2.5})", R"({"volume":"3"})", R"({"buzzer_level":-1})",
-    R"({"melody":"Siren"})", R"({"melody":3})", R"({"type":"relayx"})", R"({"pattern":""})",
+    R"({"volume":5})", R"({"volume":2.5})", R"({"volume":"3"})", R"({"audio_level":-1})",
+    R"({"type":"Buzzer"})", R"({"type":3})", R"({"type":"PWM"})", R"({"type":"DAC"})",
+    R"({"audio_output":2})", R"({"audio_output":-1})", R"({"audio_output":"I2S"})",
+    R"({"type":"Audio","audio_output":0.5})", R"({"audio_level":101})",
+    R"({"audio_level":0.5})", R"({"buzzer_level":50})", R"({"melody":"Siren"})", R"({"melody":3})", R"({"type":"relayx"})", R"({"pattern":""})",
     R"({"led":"maybe"})", R"({"led":2})", R"({"pulse_ms":49})", R"({"gap_ms":3001})",
     R"({"extra_relay_ms":2001})", R"({"mute_minutes":1441})", R"({"mute_minutes":-1})", R"({"mute":"soon"})", R"({"name":""})", R"({"name":"123456789012345678901234567890123"})",
     R"({"name":"a\u0001b"})", R"({"name":5})",
@@ -160,7 +219,7 @@ void chimeTests() {
   assert(!strcmp(out["type"], "None") && !strcmp(out["melody"], "Double beep") &&
          !strcmp(out["pattern"], "Long ring") && out["volume"] == 3 && out["led"] == false &&
          !strcmp(out["name"], "Hallway"));
-  assert(out["mute"] == false && out["mute_minutes"] == 0);
+  assert(out["mute"] == false && out["mute_minutes"] == 0 && out["audio_output"] == "DAC");
   state.muteMinutes = 20;
   writeChime(state, out.to<JsonObject>());
   assert(out["mute"] == true && out["mute_minutes"] == 20);
@@ -222,7 +281,7 @@ void wifiTests() {
 int main() {
   authTests();
   ringLogTests();
-  chimeTests();
+  chimeTests(); setupSoundTests();
   wifiTests();
   std::cout << "Feature tests passed: session tokens, sign-in throttle, ring log image, MQTT chime settings, WiFi mode\n";
 }

@@ -1,10 +1,13 @@
 #include "Hardware.h"
 #include "Band.h"
+#include "Audio.h"
+#include <driver/i2s.h>
 #include <soc/gpio_struct.h>
 #include <cstddef>
 #include <Preferences.h>
 
 PinMap pins;
+uint32_t pinMapRevision = 0;
 namespace {
 // Read by the Esp32-mode clock ISR; set from pins.data in Radio::begin().
 volatile uint32_t dataMask = 0;
@@ -162,6 +165,18 @@ void Radio::pause() {
   frame_.size = 0; expected_ = 0;
   if (samples_) xQueueReset(samples_);
   bits_ = 0; octet_ = 0; ++generation_;
+  unlock();
+}
+void Radio::remapPins(const PinMap &map) {
+  lock(); pause();
+  const bool radioChanged=memcmp(&pins,&map,offsetof(PinMap,audio))!=0;
+  if (radioChanged) {
+    SPI.end();
+    const int8_t oldPins[]={pins.sck,pins.miso,pins.mosi,pins.cs,pins.clock,pins.data};
+    for (int8_t pin:oldPins) if (pin>=0) pinMode(pin,INPUT);
+  }
+  if (frames_) xQueueReset(frames_);
+  pins=map;
   unlock();
 }
 bool Radio::begin(const RadioSettings &settings, bool wide, RxMode mode) {
@@ -350,10 +365,13 @@ String Radio::lastError() {
   return copy;
 }
 
-bool Gong::begin() {
+void Gong::configurePins() {
   // Set the idle level before enabling the output so the relay does not blip.
   if (pins.relay >= 0) { digitalWrite(pins.relay, pins.relayActiveLow ? HIGH : LOW); pinMode(pins.relay, OUTPUT); }
-  if (pins.buzzer >= 0) { ledcSetup(0, 1000, 8); ledcAttachPin(pins.buzzer, 0); ledcWrite(0, 0); }
+  if (pins.audio >= 0) { digitalWrite(pins.audio, LOW); pinMode(pins.audio, OUTPUT); }
+}
+bool Gong::begin() {
+  configurePins();
   requests_ = xQueueCreate(1, sizeof(GongRequest));
   if (!requests_) return false;
   if (xTaskCreate(task, "gong", 3072, this, 2, nullptr) != pdPASS) {
@@ -362,6 +380,10 @@ bool Gong::begin() {
   return true;
 }
 bool Gong::play(const GongRequest &request) {
+  if ((request.type == GongType::Relay && pins.relay < 0) ||
+      ((request.type == GongType::Pwm || request.type == GongType::Dac) && pins.audio < 0) ||
+      (request.type == GongType::Dac && !chime::dacPin(pins.audio)) ||
+      request.tone.melody >= 3 || request.tone.volume > 100) return false;
   return requests_ && !inhibited_ && xQueueSend(requests_, &request, 0) == pdTRUE;
 }
 void Gong::inhibit(bool value) {
@@ -383,31 +405,79 @@ bool Gong::wait(uint32_t ms) {
   }
   return !inhibited_;
 }
-void Gong::melody(const GongSettings &settings) {
+void Gong::melody(const GongRequest &request) {
+  const GongSettings &settings = request.tone;
+  // Keep the optional relay pulse when audio is muted, without enabling the
+  // DAC and producing a DC transition at the amplifier input.
+  if (!settings.volume) {
+    if (settings.relay) { relay(true); wait(settings.relayMs); relay(false); }
+    return;
+  }
+  const bool dac = request.type == GongType::Dac;
+  if (dac) {
+    i2s_config_t config{};
+    config.mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN);
+    config.sample_rate = chime::AudioSampleRate;
+    config.bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT;
+    config.channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT;
+    config.communication_format = I2S_COMM_FORMAT_STAND_MSB;
+    config.dma_buf_count = 2; config.dma_buf_len = 80;
+    // Clear DMA underruns so old audio is not replayed.
+    config.tx_desc_auto_clear = true;
+    if (i2s_driver_install(I2S_NUM_0, &config, 0, nullptr) != ESP_OK) {
+      Serial.println("DAC audio driver unavailable"); return;
+    }
+    // Enable only the selected DAC. GPIO26 may still drive the relay.
+    if (i2s_set_dac_mode(pins.audio == 25 ? I2S_DAC_CHANNEL_RIGHT_EN : I2S_DAC_CHANNEL_LEFT_EN) != ESP_OK) {
+      i2s_driver_uninstall(I2S_NUM_0); return;
+    }
+  } else {
+    ledcSetup(0, 1000, 8); ledcAttachPin(pins.audio, 0); ledcWrite(0, 0);
+  }
   const uint16_t notes[3][4] = {{784,659,0,0},{523,659,784,1047},{880,0,880,0}};
   const uint16_t durations[3][4] = {{240,520,0,0},{180,180,180,400},{180,100,180,100}};
   const uint32_t start = millis();
-  uint32_t noteStart = start;
+  uint32_t noteStart = start, phase = 0;
   int note = 0;
   bool relayOn = settings.relay;
   relay(relayOn);
   const auto tone = [&]() {
-    if (pins.buzzer >= 0 && notes[settings.melody][note] && settings.volume) {
+    if (dac) return;
+    if (note < 4 && notes[settings.melody][note] && settings.volume) {
       ledcWriteTone(0, notes[settings.melody][note]);
       ledcWrite(0, 128 * settings.volume / 100);
-    } else if (pins.buzzer >= 0) ledcWrite(0, 0);
+    } else ledcWrite(0, 0);
   };
   tone();
   while (!inhibited_) {
     const uint32_t now = millis();
     if (relayOn && uint32_t(now - start) >= settings.relayMs) { relay(false); relayOn = false; }
     if (note < 4 && uint32_t(now - noteStart) >= durations[settings.melody][note]) {
-      ++note; noteStart = now;
-      if (note < 4) tone(); else if (pins.buzzer >= 0) ledcWrite(0, 0);
+      ++note; noteStart = now; tone();
     }
     if (note == 4 && !relayOn) break;
-    vTaskDelay(pdMS_TO_TICKS(5));
+    if (dac) {
+      // Five milliseconds of stereo samples; only the selected DAC is enabled.
+      // Blocking DMA writes pace playback without a high-frequency software ISR.
+      uint16_t samples[80 * 2];
+      const uint16_t hz = note < 4 ? notes[settings.melody][note] : 0;
+      const uint32_t step = chime::audioPhaseStep(hz);
+      for (size_t i = 0; i < 80; ++i) {
+        samples[2*i] = samples[2*i+1] = chime::dacSample(phase, hz ? settings.volume : 0);
+        phase += step;
+      }
+      size_t written = 0;
+      if (i2s_write(I2S_NUM_0, samples, sizeof(samples), &written, pdMS_TO_TICKS(20)) != ESP_OK ||
+          written != sizeof(samples)) break;
+    } else vTaskDelay(pdMS_TO_TICKS(5));
   }
+  if (dac) {
+    i2s_stop(I2S_NUM_0);
+    i2s_set_dac_mode(I2S_DAC_CHANNEL_DISABLE);
+    i2s_driver_uninstall(I2S_NUM_0);
+  } else { ledcWrite(0, 0); ledcDetachPin(pins.audio); }
+  // Restore a quiet output after playback or inhibition.
+  digitalWrite(pins.audio, LOW); pinMode(pins.audio, OUTPUT);
 }
 void Gong::pattern(const GongRequest &request) {
   // Each strike energises the gong coil for pulseMs. On a classic two-tone
@@ -434,8 +504,7 @@ void Gong::task(void *self) {
     if (gong.inhibited_) continue;
     gong.active_ = true;
     if (request.type == GongType::Relay) gong.pattern(request);
-    else if (request.type == GongType::Buzzer) gong.melody(request.tone);
-    if (pins.buzzer >= 0) ledcWrite(0, 0);
+    else if (request.type == GongType::Pwm || request.type == GongType::Dac) gong.melody(request);
     gong.relay(false); gong.active_ = false;
   }
 }
@@ -447,7 +516,7 @@ const Role Roles[] = {
   {"sck", &PinMap::sck, true, false, false},   {"miso", &PinMap::miso, false, false, false},
   {"mosi", &PinMap::mosi, true, false, false}, {"cs", &PinMap::cs, true, false, false},
   {"clock", &PinMap::clock, false, false, false}, {"data", &PinMap::data, false, false, false},
-  {"buzzer", &PinMap::buzzer, true, true, false}, {"relay", &PinMap::relay, true, true, false},
+  {"audio", &PinMap::audio, true, true, false}, {"relay", &PinMap::relay, true, true, false},
   {"led", &PinMap::led, true, true, false},    {"button", &PinMap::button, false, true, true},
 };
 bool exists(int pin) {
@@ -483,7 +552,7 @@ bool checkPins(const PinMap &map, void (*report)(void *, const char *, PinIssue,
               else if (strcmp(role.name, "led")) say(role.name, PinIssue::Info, "GPIO2 also drives the on-board LED on most boards.");
               break;
       case 5: if (strcmp(role.name, "cs")) say(role.name, PinIssue::Warning, "GPIO5 is a boot strap pin that must be high at reset.");
-              else say(role.name, PinIssue::Info, "Boot strap pin: keep the recommended 10 kOhm pull-up to 3.3 V.");
+              else say(role.name, PinIssue::Info, "Boot strap pin: an optional 10 kOhm pull-up to 3.3 V can keep CS high at reset.");
               break;
       case 12: say(role.name, PinIssue::Warning, "GPIO12 sets the flash voltage at reset; if it is pulled high the module will not boot."); break;
       case 15: say(role.name, PinIssue::Info, "GPIO15 is a boot strap pin (boot messages); usually harmless."); break;

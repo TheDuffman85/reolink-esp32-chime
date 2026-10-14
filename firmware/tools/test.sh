@@ -46,7 +46,7 @@ trap 'rm -f -- "$test_binary" "$link_binary" "$app_binary" "$identity_binary" "$
 g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -g \
   -I "$firmware_dir/include" -isystem "$arduinojson" "$firmware_dir/src/Protocol.cpp" \
   "$firmware_dir/src/Auth.cpp" "$firmware_dir/src/RingLog.cpp" "$firmware_dir/src/ChimeControl.cpp" \
-  "$firmware_dir/src/WifiConfig.cpp" "$firmware_dir/test/features_test.cpp" -lcrypto -o "$features_binary"
+  "$firmware_dir/src/WifiConfig.cpp" "$firmware_dir/src/SetupSound.cpp" "$firmware_dir/test/features_test.cpp" -lcrypto -o "$features_binary"
 ASAN_OPTIONS="detect_leaks=0:${ASAN_OPTIONS:-}" "$features_binary"
 # Replay the libFuzzer corpus (fuzz/corpus, grown by tools/fuzz.sh) without clang.
 declare -A fuzz_sources=(
