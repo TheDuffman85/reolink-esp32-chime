@@ -17,6 +17,10 @@ every POST except `/api/login` and `/api/logout`**, even when sign-in is off.
 The CSRF token changes on reboot. The UI page is GET `/`; sign-in page is
 GET `/login`. JSON bodies use `Content-Type: application/json`.
 
+The HTML pages use `Content-Encoding: gzip`; browsers decompress them automatically.
+Use `curl --compressed` to read their HTML. Clients that explicitly decline gzip
+receive HTTP 406 for these pages. JSON API responses and logs remain uncompressed.
+
 Updates generally accept partial objects. Some routes reject unknown fields;
 others ignore them, so only send the fields documented for that endpoint.
 HTTP status 200 means the operation was accepted; pairing, WiFi connection and

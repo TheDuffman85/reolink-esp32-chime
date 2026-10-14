@@ -3,6 +3,15 @@ set -euo pipefail
 firmware_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 python3 "$firmware_dir/test/version_test.py"
 python3 "$firmware_dir/test/package_test.py"
+python3 "$firmware_dir/test/web_ui_test.py"
+(
+  encoding_binary="$(mktemp /tmp/reolink-web-encoding-test.XXXXXX)"
+  trap 'rm -f -- "$encoding_binary"' EXIT
+  g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -g \
+    -I "$firmware_dir/include" "$firmware_dir/src/WebEncoding.cpp" \
+    "$firmware_dir/test/web_encoding_test.cpp" -o "$encoding_binary"
+  ASAN_OPTIONS="detect_leaks=0:${ASAN_OPTIONS:-}" "$encoding_binary"
+)
 test_binary="$(mktemp /tmp/reolink-protocol-test.XXXXXX)"
 link_binary="$(mktemp /tmp/reolink-link-test.XXXXXX)"
 app_binary="$(mktemp /tmp/reolink-app-test.XXXXXX)"

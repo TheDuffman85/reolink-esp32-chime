@@ -9,7 +9,8 @@
 #include "MqttService.h"
 #include "Version.h"
 #include "WebAuth.h"
-#include "WebUi.h"
+#include "WebEncoding.h"
+#include "WebUiGzip.h"
 #include "SetupSound.h"
 #include <cstddef>
 
@@ -115,23 +116,29 @@ void registerWeb() {
     uiPrefs.end();
   } else storageOk = false;
   restartRadio();
-  const char *headers[] = {"X-CSRF-Token", "Cookie"}; server.collectHeaders(headers, 2);
-  const auto page = [](const char *html) {
+  const char *headers[] = {"X-CSRF-Token", "Cookie", "Accept-Encoding"}; server.collectHeaders(headers, 3);
+  const auto page = [](const uint8_t *compressed, size_t size) {
     server.sendHeader("Cache-Control", "no-store");
+    server.sendHeader("Vary", "Accept-Encoding");
     server.sendHeader("X-Content-Type-Options", "nosniff");
     server.sendHeader("X-Frame-Options", "DENY");
-    server.send_P(200,"text/html",html);
+    if (!chime::acceptsGzip(server.header("Accept-Encoding").c_str())) {
+      server.send(406,"text/plain","This page requires gzip support. Use a modern browser or curl --compressed.");
+      return;
+    }
+    server.sendHeader("Content-Encoding", "gzip");
+    server.send_P(200,"text/html",reinterpret_cast<const char *>(compressed),size);
   };
   const auto redirect = [](const char *location) {
     server.sendHeader("Location", location, true); server.send(302, "text/plain", "");
   };
   server.on("/", HTTP_GET, [page, redirect]() {
     if (!credentialsValid()) { redirect("/login"); return; }
-    page(WebUi);
+    page(WebUiGzip, sizeof(WebUiGzip));
   });
   server.on("/login", HTTP_GET, [page, redirect]() {
     if (!auth.enabled || sessionValid()) { redirect("/"); return; }
-    page(LoginUi);
+    page(LoginUiGzip, sizeof(LoginUiGzip));
   });
   registerAuthRoutes();
   server.on("/api/setup", HTTP_POST, []() {

@@ -24,6 +24,8 @@ class PackageTest(unittest.TestCase):
         (self.root / "tools").mkdir()
         shutil.copyfile(TOOLS / "package.py", self.root / "tools/package.py")
         shutil.copyfile(TOOLS / "build_installer.py", self.root / "tools/build_installer.py")
+        for name in ("build_web_ui.py", "pio_web_ui.py"):
+            shutil.copyfile(TOOLS / name, self.root / "tools" / name)
         shutil.copytree(WEB, self.root.parent / "web")
         (self.root / "version.json").write_text('{"version": "1.4.2"}\n')
         (self.root / "platformio.ini").write_text("[env:esp32dev]\n")
@@ -56,6 +58,9 @@ class PackageTest(unittest.TestCase):
         self.assertEqual(manifest["initial_image"]["flash_offset"], "0x0")
         self.assertEqual(manifest["source_sha256"]["platformio.ini"],
                          hashlib.sha256((self.root / "platformio.ini").read_bytes()).hexdigest())
+        for name in ("build_web_ui.py", "pio_web_ui.py"):
+            self.assertEqual(manifest["source_sha256"]["tools/" + name],
+                             hashlib.sha256((self.root / "tools" / name).read_bytes()).hexdigest())
 
     def test_installer_uses_matching_initial_image_at_zero_on_project_pages(self):
         result = self.package()

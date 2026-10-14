@@ -34,6 +34,15 @@ embedded version before packaging it. The UI reads `REOLINK_CHIME_VERSION` from
 OTA files and compares the running version after restart. V2 compatibility
 version `00A2` is a separate RF value, not the app version.
 
+The build compresses the two static pages in `include/WebUi.h` with gzip and
+generates `WebUiGzip.h` and `.html.gz` assets under `.pio/build/esp32dev/generated/`.
+Edit the original HTML; generated assets are not checked in. The ESP32 sends
+the compressed bytes directly from flash with `Content-Encoding: gzip` and an
+explicit byte length. Compression runs only on the build computer; the browser
+decompresses the pages. API responses and logs remain uncompressed. Clients
+that explicitly decline gzip receive HTTP 406 for HTML pages; use a browser
+or `curl --compressed`. Existing authentication and no-store headers remain.
+
 ### Initial USB installation from a release
 
 The easiest option is the [browser USB installer](https://TheDuffman85.github.io/reolink-esp32-chime/).

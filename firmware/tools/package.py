@@ -29,7 +29,7 @@ dest = root / "dist"
 dest.mkdir(exist_ok=True)
 shutil.copyfile(image, dest / "firmware.bin")
 shutil.copyfile(initial, dest / initial.name)
-inputs = sorted([root / "platformio.ini", *root.glob("include/*.h"), *root.glob("src/*.cpp")])
+inputs = sorted([root / "platformio.ini", *root.glob("include/*.h"), *root.glob("src/*.cpp"), *root.glob("tools/*.py")])
 manifest = {
     "version": version,
     "board": "esp32dev (ESP32-WROOM-32, 4 MB flash)",
