@@ -20,7 +20,9 @@ uint8_t Radio::octet_ = 0, Radio::bits_ = 0;
 uint32_t Radio::generation_ = 0;
 
 bool Radio::select() {
-  SPI.beginTransaction(SPISettings(4000000, MSBFIRST, SPI_MODE0));
+  // Ample headroom over 25 kbit/s RF without demanding fast edges from
+  // jumper-wired modules.
+  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
   digitalWrite(pins.cs, LOW);
   const uint32_t start = micros();
   while (digitalRead(pins.miso)) {
@@ -336,7 +338,10 @@ bool Radio::setTrim(int8_t trim) {
 bool Radio::configured() {
   lock();
   uint8_t iocfg0 = 0, pktctrl0 = 0, state = 0;
-  const bool ok = read(0x02, iocfg0) && read(0x08, pktctrl0) && readStable(0x35, state);
+  // A failed begin/recovery can leave correct registers while RX polling is
+  // disabled. Keep retrying until both the driver and the chip are ready.
+  const bool ok = healthy && receiving_ && read(0x02, iocfg0) &&
+    read(0x08, pktctrl0) && readStable(0x35, state);
   unlock();
   // 0x11 is an RX FIFO overflow that serviceRx() is about to clear.
   return ok && iocfg0 == iocfg0_ && pktctrl0 == pktctrl0_ &&

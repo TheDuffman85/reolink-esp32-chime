@@ -186,6 +186,14 @@ AP changes require restart; **Change network → Connect** (also in Setup) switc
 
 ## Pairing with the doorbell
 
+**For first pairing, place the chime 1–2 metres from the doorbell.** With
+automatic trim enabled (the default), strong reception helps the chime measure
+and save its radio frequency correction. Keep it nearby through pairing,
+renaming and a few physical doorbell presses or main Reolink chime Test plays.
+Wait a few seconds after the tests, then move it to its intended location and
+test again. Follow this advice again after a USB installation that erases
+settings, because the saved frequency calibration is cleared too.
+
 1. Keep the default **868.000 MHz** for the tested EU setup; select another carrier only if your doorbell uses it.
 2. Open your doorbell's chime settings in Reolink and start its normal add-chime search.
 3. In the ESP32 web UI, open **Settings → Doorbell → Pair again** (or the pairing step in Setup) and choose **Start pairing**.
@@ -445,7 +453,7 @@ is steady during playback.
 | Symptom | Check |
 |---|---|
 | Radio unavailable | 3.3 V power, common ground, SPI labels, optional CS pull-up and module crystal |
-| Pairing fails | Correct carrier, antenna, add-chime search, radio/storage state and Debug log |
+| Pairing fails | For first pairing or after an erased USB install, move the chime within 1–2 metres of the doorbell for automatic frequency tuning; check carrier, antenna, add-chime search, radio/storage state and Debug log |
 | Joined but physical presses do not arrive | Remove an incompatible ID entry, pair again and check session/CRC counters |
 | Ring logged but no sound | Mute, app volume, output type/GPIO, audio GPIO/amplifier, relay polarity/supply |
 | Web address unavailable | Device IP or 192.168.4.1; WiFi mode; physical recovery controls |
