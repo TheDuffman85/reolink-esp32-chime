@@ -6,6 +6,7 @@
 #include <freertos/semphr.h>
 #include <atomic>
 #include "Protocol.h"
+#include "ChimeControl.h"
 
 // GPIO assignment, editable in the web UI and stored in NVS ("pins").
 // Defaults are the owner-confirmed harness: blue SCK, purple MISO, green MOSI,
@@ -13,15 +14,18 @@
 // FIFO reception (1.0.7+) no longer reads GDO0/GDO2; they stay configured
 // as inputs so existing harnesses and saved maps keep working.
 // -1 marks an optional output/input that is not connected.
+// audio occupies the former tone-output slot in the persisted GPIO map.
+// PWM accepts any output GPIO; DAC audio requires GPIO25 or GPIO26.
 // relayActiveLow: the relay switches on when its input is LOW, as on common
 // optocoupler relay modules; stored under its own NVS key so the "map" blob
 // keeps the layout older firmware reads.
 struct PinMap {
   int8_t sck = 18, miso = 19, mosi = 23, cs = 5, clock = 4, data = 16;
-  int8_t buzzer = 25, relay = 26, led = 2, button = 0;
+  int8_t audio = 25, relay = 26, led = 2, button = 0;
   bool relayActiveLow = false;
 };
 extern PinMap pins;
+extern uint32_t pinMapRevision;
 enum class PinIssue : uint8_t { Info, Warning, Error };
 // Checks a pin map against ESP32-WROOM-32 constraints. Calls report() for each
 // finding with a role name ("sck", "relay", ...). Returns false on any error.
@@ -58,6 +62,8 @@ class Radio {
   bool wide() const { return wide_; }
   RxMode mode() const { return mode_; }
   void pause();
+  // Pause under the radio lock, release SPI if needed, then replace the map.
+  void remapPins(const PinMap &map);
   // Complete on-air bytes, including the software preamble, sync and CRC.
   // Frames above the 64-byte FIFO are streamed. Always resumes RX.
   bool transmit(const uint8_t *frame, size_t size);
@@ -115,27 +121,32 @@ class Radio {
 // Persisted inside Settings; layout must stay unchanged.
 struct GongSettings { uint8_t melody = 0, volume = 35; bool relay = false;
                       uint16_t relayMs = 300; };
-// Buzzer: melodies on the passive buzzer (optional parallel relay pulse).
+// PWM/DAC: melodies for an external amplifier (optional parallel relay pulse).
 // Relay: an existing (e.g. 8 V AC) gong driven by the relay with strike patterns.
 // None: no output; rings are only logged and reported (MQTT/Home Assistant).
-// Values match chime::GongKind and the stored gong type.
-enum class GongType : uint8_t { Buzzer, Relay, None };
+// Hardware backends retain legacy ring-log IDs. Public modes use GongKind.
+enum class GongType : uint8_t { Pwm = 0, Relay = 1, None = 2, Dac = 3 };
+inline GongType outputType(uint8_t mode, uint8_t audioOutput) {
+  return mode == uint8_t(chime::GongKind::Audio) ?
+    (audioOutput == uint8_t(chime::AudioOutput::Dac) ? GongType::Dac : GongType::Pwm) : static_cast<GongType>(mode);
+}
 constexpr uint8_t RelayPatterns = 5;
 struct GongRequest {
   GongSettings tone;
-  GongType type = GongType::Buzzer;
+  GongType type = GongType::Relay;
   uint8_t pattern = 0;          // 0 ding-dong, 1 double, 2 triple, 3 long, 4 insistent
   uint16_t pulseMs = 300, gapMs = 700;
 };
 class Gong {
  public:
   bool begin();
+  void configurePins();
   bool play(const GongRequest &request);
   void inhibit(bool value);
   bool active() const { return active_; }
  private:
   static void task(void *self);
-  void melody(const GongSettings &tone);
+  void melody(const GongRequest &request);
   void pattern(const GongRequest &request);
   void relay(bool on);
   bool wait(uint32_t ms);

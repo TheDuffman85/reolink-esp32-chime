@@ -1,12 +1,14 @@
 #include "ChimeService.h"
 #include <Preferences.h>
 #include "App.h"
+#include "Audio.h"
 #include "LinkService.h"
 #include "MqttService.h"
 
 Gong gong;
 bool gongReady = false;
 GongExtra gongx;
+uint8_t gongAudioOutput = 0;
 chime::AppConfig chimeApp;
 bool muteForever = false, muteTimed = false;
 chime::RingLog ringLog;
@@ -29,7 +31,7 @@ bool storeChime(const chime::ChimeState &next) {
     nextSettings.gong.volume != settings.gong.volume || nextSettings.gong.relay != settings.gong.relay ||
     nextSettings.gong.relayMs != settings.gong.relayMs;
   const bool gongChanged = nextGong.type != gongx.type || nextGong.pattern != gongx.pattern ||
-    nextGong.pulseMs != gongx.pulseMs || nextGong.gapMs != gongx.gapMs;
+    nextGong.pulseMs != gongx.pulseMs || nextGong.gapMs != gongx.gapMs || next.audioOutput != gongAudioOutput;
   const bool appChanged = strcmp(nextApp.name, chimeApp.name) || nextApp.volume != chimeApp.volume ||
     nextApp.led != chimeApp.led;
   // A timed mute needs no flash write; minutes left only change when requested.
@@ -49,8 +51,12 @@ bool storeChime(const chime::ChimeState &next) {
   if (ok && settingsChanged) { ok = saveSettings(nextSettings); storageOk = ok; if (ok) settings = nextSettings; }
   if (ok && gongChanged) {
     Preferences prefs; ok = prefs.begin("gongx", false);
-    if (ok) { ok = prefs.putBytes("gong", &nextGong, sizeof(nextGong)) == sizeof(nextGong); prefs.end(); }
-    if (ok) gongx = nextGong;
+    if (ok) {
+      ok = prefs.putUChar("audioout", next.audioOutput) == 1 &&
+        prefs.putBytes("gong", &nextGong, sizeof(nextGong)) == sizeof(nextGong);
+      prefs.end();
+    }
+    if (ok) { gongx = nextGong; gongAudioOutput = next.audioOutput; }
   }
   if (ok && appChanged) {
     Preferences prefs; ok = prefs.begin("chimeapp", false);
@@ -77,18 +83,48 @@ void saveRingLog() {
 }
 }
 
+void applyPinsLive(const PinMap &map) {
+  const bool radioChanged=memcmp(&pins,&map,offsetof(PinMap,audio))!=0;
+  gong.inhibit(true); radio.pause();
+  if (pins.relay>=0) { digitalWrite(pins.relay,pins.relayActiveLow?HIGH:LOW); pinMode(pins.relay,INPUT); }
+  if (pins.audio>=0) { digitalWrite(pins.audio,LOW); pinMode(pins.audio,INPUT); }
+  if (pins.led>=0) { digitalWrite(pins.led,LOW); pinMode(pins.led,INPUT); }
+  if (pins.button>=0) pinMode(pins.button,INPUT);
+  radio.remapPins(map);
+  gong.configurePins();
+  if (pins.led>=0) { digitalWrite(pins.led,LOW); pinMode(pins.led,OUTPUT); }
+  if (pins.button>=0) pinMode(pins.button,INPUT_PULLUP);
+  ++pinMapRevision;
+  restartRadio();
+  if (radioChanged) initLink(radio.healthy);
+  gong.inhibit(false);
+  logf("GPIO map applied live; radio %s\n",radio.healthy?"ready":"unavailable");
+}
+
 void loadGongExtra() {
   Preferences prefs; if (!prefs.begin("gongx", true)) return;
   GongExtra stored;
   if (prefs.getBytesLength("gong") == sizeof(stored) && prefs.getBytes("gong", &stored, sizeof(stored)) == sizeof(stored) &&
-      stored.type < chime::GongKinds && stored.pattern < RelayPatterns && stored.pulseMs >= 50 && stored.pulseMs <= 2000 &&
-      stored.gapMs >= 100 && stored.gapMs <= 3000) gongx = stored;
+      stored.type <= 3 && stored.pattern < RelayPatterns && stored.pulseMs >= 50 && stored.pulseMs <= 2000 &&
+      stored.gapMs >= 100 && stored.gapMs <= 3000) {
+    // A separate method key also remembers DAC while Gong or None is selected.
+    const uint8_t output = prefs.getUChar("audioout", chime::audioFromStoredType(stored.type));
+    gongAudioOutput = output < chime::AudioOutputs ? output : chime::audioFromStoredType(stored.type);
+    stored.type = chime::modeFromStoredType(stored.type);
+    gongx = stored;
+  }
   prefs.end();
+}
+const char *outputError(GongType type, const PinMap &map) {
+  if (type == GongType::Relay && map.relay < 0) return "Assign a relay GPIO before choosing the gong";
+  if ((type == GongType::Pwm || type == GongType::Dac) && map.audio < 0) return "Assign an audio GPIO before choosing Audio";
+  if (type == GongType::Dac && !chime::dacPin(map.audio)) return "DAC audio requires GPIO25 or GPIO26";
+  return nullptr;
 }
 GongRequest gongRequest(uint8_t appVolume) {
   GongRequest request;
   request.tone = settings.gong; request.tone.volume = request.tone.volume * appVolume / 4;
-  request.type = static_cast<GongType>(gongx.type);
+  request.type = outputType(gongx.type, gongAudioOutput);
   request.pattern = gongx.pattern; request.pulseMs = gongx.pulseMs; request.gapMs = gongx.gapMs;
   return request;
 }
@@ -128,7 +164,7 @@ void serviceMute() {
 
 chime::ChimeState currentChime() {
   chime::ChimeState state;
-  state.type = gongx.type; state.melody = settings.gong.melody; state.level = settings.gong.volume;
+  state.type = gongx.type; state.audioOutput = gongAudioOutput; state.melody = settings.gong.melody; state.level = settings.gong.volume;
   state.volume = chimeApp.volume; state.pattern = gongx.pattern; state.led = chimeApp.led;
   state.extraRelay = settings.gong.relay; state.extraRelayMs = settings.gong.relayMs;
   state.pulseMs = gongx.pulseMs; state.gapMs = gongx.gapMs;
@@ -136,14 +172,20 @@ chime::ChimeState currentChime() {
   state.mute = muteForever; state.muteMinutes = uint16_t((muteRemainingMs() + 59999) / 60000);
   return state;
 }
-const char *updateChime(JsonObjectConst update, const char *origin) {
+const char *updateChime(JsonObjectConst update, const char *origin, const PinMap *validationPins) {
   if (otaStarted) return "Firmware update in progress";
   chime::ChimeState next = currentChime();
   if (const char *error = chime::applyChime(update, next)) return error;
-  if (next.type == uint8_t(GongType::Relay) && pins.relay < 0) return "Assign a relay GPIO before choosing the gong";
+  const PinMap &map=validationPins ? *validationPins : pins;
+  // Optional pins may be disconnected deliberately. Name, LED, volume and
+  // mute remain editable; selecting an output still requires usable wiring.
+  const bool selectingOutput=update.containsKey("type") || update.containsKey("audio_output");
+  if (selectingOutput) if (const char *error=outputError(outputType(next.type,next.audioOutput),map)) return error;
+  if (next.type==uint8_t(chime::GongKind::Audio) && next.extraRelay && map.relay<0 &&
+      (selectingOutput || update.containsKey("extra_relay"))) return "Assign a relay GPIO for the extra pulse";
   if (!storeChime(next)) return "Could not save the chime settings";
-  logf("[%s] chime: type=%s melody=%u level=%u volume=%u pattern=%u led=%u mute=%s name='%s'\n", origin,
-    chime::GongKindNames[gongx.type], settings.gong.melody, settings.gong.volume, chimeApp.volume,
+  logf("[%s] chime: type=%s audio_output=%s melody=%u level=%u volume=%u pattern=%u led=%u mute=%s name='%s'\n", origin,
+    chime::GongKindNames[gongx.type], chime::AudioOutputNames[gongAudioOutput], settings.gong.melody, settings.gong.volume, chimeApp.volume,
     gongx.pattern, chimeApp.led, muteForever ? "on" : muteTimed ? (String(next.muteMinutes) + " min").c_str() : "off",
     chimeApp.name);
   return nullptr;
@@ -154,17 +196,21 @@ void ringJson(const chime::RingEvent &e, JsonObject o, bool labels) {
   o["source"] = chime::RingSourceNames[e.source]; o["outcome"] = chime::RingOutcomeNames[e.outcome];
   const bool relay = e.type == uint8_t(GongType::Relay);
   if (labels) {
-    o["type"] = chime::GongKindNames[e.type < chime::GongKinds ? e.type : 0];
+    o["type"] = chime::GongKindNames[chime::modeFromStoredType(e.type) < chime::GongKinds ? chime::modeFromStoredType(e.type) : 0];
     if (e.type != uint8_t(GongType::None))
       o["sound"] = relay ? chime::PatternNames[e.sound % chime::Patterns] : chime::MelodyNames[e.sound % chime::Melodies];
     const String time = isoTime(e.epoch);
     if (time.length()) o["time"] = time; else o["time"] = nullptr;
   } else {
-    o["type"] = e.type; o["sound"] = e.sound; o["ms"] = e.ms;
+    o["type"] = chime::modeFromStoredType(e.type); o["sound"] = e.sound; o["ms"] = e.ms;
     if (e.epoch) o["epoch"] = e.epoch; else o["epoch"] = nullptr;
     o["previous_boot"] = bool(e.flags & chime::RingPreviousBoot);
   }
-  o["volume"] = e.volume; o["buzzer_level"] = e.level; o["preview"] = bool(e.flags & chime::RingPreview);
+  if (e.type == uint8_t(GongType::Pwm) || e.type == uint8_t(GongType::Dac)) {
+    const uint8_t output = chime::audioFromStoredType(e.type);
+    if (labels) o["audio_output"] = chime::AudioOutputNames[output]; else o["audio_output"] = output;
+  }
+  o["volume"] = e.volume; o["audio_level"] = e.level; o["preview"] = bool(e.flags & chime::RingPreview);
   if (e.source == uint8_t(chime::RingSource::Doorbell)) { o["tone"] = e.tone; o["rssi_dbm"] = e.rssi; }
 }
 chime::RingOutcome playChime(chime::RingSource source, const GongRequest &request, uint8_t appVolume,

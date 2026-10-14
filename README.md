@@ -1,8 +1,8 @@
 # reolink-esp32-chime
 
 An ESP32 + CC1101 wireless chime for **Reolink Chime hardware V2**. Pair it in
-the Reolink app, then use a passive buzzer, an existing low-voltage gong through
-a relay, or silent MQTT events. The doorbell communicates directly with the
+the Reolink app, then use an existing low-voltage gong through a relay, PWM or DAC audio
+through an external amplifier, or silent MQTT events. The doorbell communicates directly with the
 CC1101; WiFi provides setup, control, updates and Home Assistant integration.
 
 ![Web interface: Home](firmware/docs/images/web-status.png)
@@ -17,21 +17,21 @@ WiFi Video Doorbell, model **DB_566128M5MP_W**. Hardware V2 pairing, encrypted
 join, reboot rejoin, physical doorbell presses, the main Reolink chime Test
 control, name/volume/LED settings and OTA have been validated on that setup.
 Other doorbell models, other chime hardware revisions and the 915/920 MHz
-presets have not been validated. Audible buzzer output and physical relay
+presets have not been validated. Audible PWM/DAC output and physical relay
 timing still need hardware verification.
 
 - Normal Reolink pairing with an individual AES key; saved credentials and automatic rejoin.
-- Three buzzer melodies: Ding dong, Ascending and Double beep.
+- Three PWM/DAC melodies: Ding dong, Ascending and Double beep.
 - Five relay patterns: Ding-dong, Double, Triple, Long ring and Insistent.
 - Silent mode, permanent/timed mute, optional extra relay pulse and configurable LED.
 - Mobile-friendly web UI, light/dark/system theme and optional sign-in.
 - 2.4 GHz WiFi onboarding, standalone access point and WiFi-off operation.
-- MQTT commands, events, retained state and 21 Home Assistant discovery entities.
+- MQTT commands, events, retained state and 22 Home Assistant discovery entities.
 - Last 50 ring events persisted locally, RF packet history and downloadable text diagnostics.
 - Configurable GPIOs, automatic frequency trim, two RF receivers and web OTA.
 - PlatformIO build, portable host tests and protocol fuzzing tools.
 
-The ESP32 plays local PWM melodies/patterns. Reolink's sampled ringtone library
+The ESP32 plays local PWM/DAC melodies and relay patterns. Reolink's sampled ringtone library
 is not included; its ringtone number is recorded with received events.
 
 ## Documentation
@@ -40,7 +40,7 @@ is not included; its ringtone number is recorded with received events.
 |---|---|
 | [PROTOCOL.md](PROTOCOL.md) | V2 RF framing, pairing, encryption, join, data and frequencies |
 | [API.md](API.md) | HTTP routes, authentication, request fields, responses and MQTT |
-| [WIRING.md](firmware/WIRING.md) | Radio, passive buzzer, relay circuits and physical controls |
+| [WIRING.md](firmware/WIRING.md) | Radio, PWM/DAC audio, relay circuits and physical controls |
 | [Firmware developer guide](firmware/README.md) | Build, source modules, tests, versioning and packaging |
 | [Image documentation](firmware/docs/README.md) | Hardware reference sources and screenshot reproduction |
 
@@ -51,10 +51,9 @@ is not included; its ringtone number is recorded with received events.
 | ESP32 board | ESP32-WROOM-32 development board, `esp32dev`, 4 MB flash; reference image is a 38-pin board |
 | Radio | CC1101 module with a 26 MHz crystal and matching 868 MHz RF network/antenna for the tested configuration |
 | Power | USB supply for the ESP32; radio power and signals are **3.3 V** |
-| Radio decoupling | 100 nF ceramic and 10 µF across VCC/GND near the module |
-| CS bias | Recommended 10 kΩ pull-up from CSN to 3V3 |
-| Optional sound | Passive buzzer/transducer with a suitable MOSFET driver, or a 3.3 V compatible relay interface |
-| Optional driver parts | 100 Ω gate resistor, 100 kΩ gate pull-down and flyback diode for inductive loads |
+| Optional radio decoupling capacitors | 100 nF ceramic and 10 µF across VCC/GND near the module |
+| Optional CS bias resistor | 10 kΩ pull-up from CSN to 3V3 |
+| Optional sound | 3.3 V compatible relay interface, or an external amplifier for PWM/DAC audio |
 
 Use a module and antenna matched to the chosen band. A 433 MHz ASK/OOK receiver
 cannot implement this bidirectional GFSK protocol. GPIO16/17 are used by PSRAM
@@ -71,10 +70,10 @@ on some WROVER boards, so the default map targets WROOM.
 | SCK | GPIO18 | SPI clock |
 | SO / MISO | GPIO19 | SPI input / chip ready |
 | SI / MOSI | GPIO23 | SPI output |
-| CSN | GPIO5 | Chip select; pull-up recommended |
+| CSN | GPIO5 | Chip select; optional 10 kΩ pull-up to 3V3 |
 | GDO0 | GPIO4 | Clock for optional ESP32 bit-sampling RX |
 | GDO2 | GPIO16 | Data for optional ESP32 bit-sampling RX |
-| Passive buzzer driver | GPIO25 | MOSFET gate, never a coil/speaker directly |
+| Audio output | GPIO25 | External audio amplifier; DAC requires GPIO25 or GPIO26 |
 | Relay driver/input | GPIO26 | Active high by default; active low configurable |
 | Status LED | GPIO2 | Board LED presence/polarity varies |
 | Local button | GPIO0 | BOOT button after startup |
@@ -90,10 +89,11 @@ bit-sampling mode. Follow signal labels rather than header position.
 The references show the component side and are not photographs of the assembled
 project. Source links are in [image documentation](firmware/docs/README.md).
 
-For a buzzer, connect its positive lead to its rated supply and switch its
-negative lead with a MOSFET that conducts at a 3.3 V gate voltage. Join grounds;
-put a flyback diode across an inductive buzzer, cathode to the positive supply.
-Use a passive device to play multiple pitches. DAC audio and I2S are not implemented.
+For PWM or DAC audio, connect the audio GPIO (default GPIO25) to a suitable
+external amplifier input and join the low-voltage grounds. PWM produces
+variable-frequency square-wave tones; DAC produces 8-bit analog sine-wave
+melodies at 16 kHz. Use AC coupling and any filtering required by your amplifier;
+never drive a speaker directly from a GPIO. External I2S amplifiers are not supported.
 
 For an existing gong, connect the relay's **COM and NO dry contacts** across the
 gong's low-voltage pushbutton terminals. The gong circuit stays on the relay
@@ -142,7 +142,15 @@ install a blank board.
 2. Join the hotspot and open **http://192.168.4.1/** manually.
 3. In Setup, scan for a **2.4 GHz** WiFi network, enter its password and connect.
 4. On your LAN, open **http://reolink-chime.local/** or the device IP shown in the UI/serial log.
-5. Optionally enable sign-in in Settings → Sign-in and set a username/password.
+5. Continue through pairing and sound/wiring, optionally configure sign-in, then review and click **Finish**. Sign-in can also be changed later in Settings → Sign-in.
+
+After **Finish**, the Setup tab hides automatically. Show it again under
+**Settings → General → Show Setup tab**; this preference is saved on the chime
+and survives restarts. Existing paired installations start with Setup hidden.
+All setup choices remain available through **Sound** and **Settings**, including
+**Network & time → Change network** and **Doorbell → Pair again**.
+In Network & time, choose the WiFi mode first; network connection controls
+appear only when Client is selected.
 
 WiFi connection starts immediately without a reboot. A failed or lost client
 connection opens the setup hotspot after 20 seconds; an opened hotspot remains
@@ -156,7 +164,7 @@ until reboot. The RF chime continues independently of WiFi.
 
 An empty custom AP password falls back to the sign-in password while sign-in is
 enabled, otherwise an open hotspot. AP passwords are 8–63 characters. Mode and
-AP changes require restart; Setup → Connect switches back to client mode.
+AP changes require restart; **Change network → Connect** (also in Setup) switches back to client mode.
 
 ![WiFi onboarding](firmware/docs/images/web-setup-wifi.png)
 
@@ -164,7 +172,7 @@ AP changes require restart; Setup → Connect switches back to client mode.
 
 1. Keep the default **868.000 MHz** for the tested EU setup; select another carrier only if your doorbell uses it.
 2. Open your doorbell's chime settings in Reolink and start its normal add-chime search.
-3. In the ESP32 web UI, open Setup and choose **Start pairing**.
+3. In the ESP32 web UI, open **Settings → Doorbell → Pair again** (or the pairing step in Setup) and choose **Start pairing**.
 4. Select the discovered chime in Reolink and complete pairing within five minutes.
 5. Confirm the ESP32 reports Joined, then press the physical doorbell and check the Home ring log.
 6. Set the name, volume and LED in Reolink or the ESP32 UI; choose local output settings in Sound.
@@ -191,10 +199,10 @@ physical press when verifying reception.
 | Area | Controls |
 |---|---|
 | Home | Readiness, WiFi/link state, Mute, Play chime, filtered ring history and clear |
-| Sound | Buzzer / existing gong / None, melody or strike pattern, PWM level, app volume, extra relay and LED |
-| Setup | WiFi, pairing, name/sound and completion steps |
-| Settings → General | Name and per-browser System/Light/Dark theme |
-| Network & time | Client/AP/off mode, hotspot settings and NTP server |
+| Sound | Gong (default) / Audio / None, PWM or DAC audio output, melody or strike pattern, audio level, app volume, extra relay and LED |
+| Setup | WiFi, pairing, sound/output wiring, optional sign-in, then review and Finish; hides after Finish |
+| Settings → General | Show/hide Setup, name and per-browser System/Light/Dark theme |
+| Network & time | WiFi scan/connect, Client/AP/off mode, hotspot settings and NTP server |
 | Doorbell | Pairing and saved doorbell information |
 | MQTT (Home Assistant) | Broker, credentials, topics, discovery and connection status |
 | Sign-in | Optional authentication, credentials and sign-out controls |
@@ -202,23 +210,39 @@ physical press when verifying reception.
 | Advanced | Frequency, trim, receiver, polarity and GPIO mapping |
 | Debug | Radio diagnostics, log/download, last 32 packets, pairing/rejoin/test and passive manual profile |
 
-![Buzzer settings](firmware/docs/images/web-sound.png)
+![Gong settings](firmware/docs/images/web-sound-relay.png)
 
-![Existing gong settings](firmware/docs/images/web-sound-relay.png)
+![Audio settings with PWM output](firmware/docs/images/web-sound.png)
 
-App volume is **0–4**; buzzer PWM level is **0–100%**. Incoming buzzer level
+![Audio settings with DAC output](firmware/docs/images/web-sound-dac.png)
+
+**Gong** is the default for new configurations and the leftmost choice in
+Sound and Setup. **Audio** plays the same melodies using either **PWM** or
+**DAC**, selected under Audio output. Its method is remembered even while Gong
+or None is selected. Saved PWM/DAC choices migrate to Audio with the same method;
+GPIO assignments are retained as **Audio output** and **Relay**.
+
+App volume is **0–4**; PWM/DAC audio level is **0–100%**. Incoming audio level
 is scaled by app volume. Relay rings are suppressed at app volume zero. Strike
 length is 50–2000 ms; gap is 100–3000 ms (defaults 300/700 ms). Long ring uses
 four times the strike length, capped at 3000 ms. Insistent produces five strikes
 using half pulse/gap with minimums of 50/100 ms. None accepts/logs/publishes rings
-without sound. An extra relay pulse in buzzer mode is independent of PWM volume.
+without sound. An extra relay pulse in Audio mode is independent of audio level.
 
 Permanent mute survives reboot. Timed mute is 1–1440 minutes and ends on restart.
 Muted and silent doorbell rings are still counted and logged. Local web/button/
-serial tests bypass owner mute and use full app volume; MQTT play obeys mute
+serial tests bypass owner mute. Home/button/serial tests use full app volume;
+Sound and Setup previews use the selected audio level and app volume; MQTT play obeys mute
 unless `force:true` is supplied.
 
-GPIO saves apply after restart. Optional buzzer/relay/LED/button can be disabled;
+Setup includes Relay/Audio GPIOs and relay polarity for the selected mode.
+Continue opens optional sign-in, followed by the final review. **Finish** saves
+and applies sound, wiring and any sign-in changes without restarting. Skip
+leaves the current sign-in settings unchanged; existing passwords can be kept
+by leaving both password fields empty. Sound tests are enabled after applying any
+pin changes. Advanced wiring exposes radio, LED and button assignments.
+
+GPIO saves apply immediately without restarting. Optional audio/relay/LED/button can be disabled;
 the six radio signal assignments must remain valid. Validation identifies
 duplicates, flash/UART pins, input-only outputs and boot strap constraints.
 
@@ -352,10 +376,10 @@ is steady during playback.
 
 | Symptom | Check |
 |---|---|
-| Radio unavailable | 3.3 V power, common ground, SPI labels, CS pull-up and module crystal |
+| Radio unavailable | 3.3 V power, common ground, SPI labels, optional CS pull-up and module crystal |
 | Pairing fails | Correct carrier, antenna, add-chime search, radio/storage state and Debug log |
 | Joined but physical presses do not arrive | Remove an incompatible ID entry, pair again and check session/CRC counters |
-| Ring logged but no sound | Mute, app volume, output type/GPIO, passive buzzer driver, relay polarity/supply |
+| Ring logged but no sound | Mute, app volume, output type/GPIO, audio GPIO/amplifier, relay polarity/supply |
 | Web address unavailable | Device IP or 192.168.4.1; WiFi mode; physical recovery controls |
 | No Home Assistant entities | Broker connection, discovery switch and matching discovery prefix |
 | Packet loss | Debug dropped/CRC counters, short wiring and WiFi-load testing |

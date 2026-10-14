@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="660" viewBox="0 0 960 660" role="img" aria-labelledby="title desc">
 <title id="title">ESP32-WROOM to CC1101 default chime wiring</title>
-<desc id="desc">Default map: VCC to 3V3, GND to ground, SCK to GPIO18, MISO to GPIO19, MOSI to GPIO23, CSN to GPIO5. Optional ESP32 bit-sampling mode additionally needs GDO0 clock to GPIO4 and GDO2 data to GPIO16. GPIO2 is the status LED. GPIO25 drives a buzzer transistor and GPIO26 a relay driver, active high by default. Settings can change GPIO assignments; restart to apply.</desc>
+<desc id="desc">Default map: VCC to 3V3, GND to ground, SCK to GPIO18, MISO to GPIO19, MOSI to GPIO23, CSN to GPIO5. Optional ESP32 bit-sampling mode additionally needs GDO0 clock to GPIO4 and GDO2 data to GPIO16. GPIO2 is the status LED. GPIO25 provides the shared Audio output (PWM or DAC, selected under Sound) to an external amplifier and GPIO26 a Gong relay input, active high by default. Settings can change GPIO assignments; apply when saved without restarting.</desc>
 <rect width="960" height="660" fill="#f4f7fa"/>
 <style>text{font-family:Arial,sans-serif;fill:#172e40}.pin{font-family:monospace;font-size:18px}.label{font-size:16px}.small{font-size:14px}.wire{fill:none;stroke-width:3}</style>
 <text x="40" y="48" font-size="26" font-weight="bold">ESP32 + CC1101 · default chime wiring</text>
-<text x="40" y="77" class="label">Default GPIO map · follow signal labels · custom maps require restart</text>
+<text x="40" y="77" class="label">Default GPIO map · follow signal labels · custom maps apply live</text>
 <rect x="45" y="112" width="280" height="430" rx="15" fill="#ddebf4" stroke="#38657b" stroke-width="2"/>
 <rect x="635" y="112" width="280" height="430" rx="15" fill="#e4f0e7" stroke="#477656" stroke-width="2"/>
 <text x="70" y="149" font-size="21" font-weight="bold">ESP32-WROOM-32</text>
@@ -16,8 +16,8 @@
 <path class="wire" stroke="#c34141" d="M325 218H635"/><path class="wire" stroke="#172e40" d="M325 257H635"/>
 <path class="wire" stroke="#487596" d="M325 296H635M325 335H635M325 374H635M325 413H635"/>
 <path class="wire" stroke="#947035" d="M325 452H635M325 491H635"/>
-<g class="small" text-anchor="middle"><text x="480" y="209">100 nF + 10 µF at VCC/GND</text><text x="480" y="404">10 kΩ CSN pull-up to 3V3</text><text x="480" y="443">25 kHz bit clock (optional RX)</text><text x="480" y="524" font-weight="bold">GDO wires only for ESP32 bit-sampling RX</text></g>
+<g class="small" text-anchor="middle"><text x="480" y="209">Optional: 100 nF + 10 µF at VCC/GND</text><text x="480" y="404">Optional: 10 kΩ CSN pull-up to 3V3</text><text x="480" y="443">25 kHz bit clock (optional RX)</text><text x="480" y="524" font-weight="bold">GDO wires only for ESP32 bit-sampling RX</text></g>
 <rect x="45" y="562" width="870" height="73" rx="10" fill="#fff3db" stroke="#ba924b"/>
-<text x="65" y="590" class="label">GPIO25 → buzzer MOSFET gate · GPIO26 → active-high relay/gong driver</text>
-<text x="65" y="614" class="small">Use gate pull-downs and coil flyback diodes. Never drive coils or speakers directly. See WIRING.md.</text>
+<text x="65" y="590" class="label">GPIO25 → Audio output (PWM or DAC) · GPIO26 → Gong relay input (active high)</text>
+<text x="65" y="614" class="small">Use relay modules and audio amplifiers; never drive coils or speakers directly. See WIRING.md.</text>
 </svg>

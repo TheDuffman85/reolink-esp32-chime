@@ -144,9 +144,9 @@ void setup() {
   else logf("Web sign-in off; the setup hotspot is open until a password is set in Settings > Security.\n");
   logf("Chime node ID: %s (app shows it as signed decimal %d)\n", hex32(settings.nodeId).c_str(), int32_t(settings.nodeId));
   if (!storageOk) logf("WARNING: settings persistence unavailable\n");
-  logf("GPIO: %s map, radio SCK %d MISO %d MOSI %d CS %d GDO0 %d GDO2 %d, buzzer %d relay %d (active %s) LED %d button %d\n",
+  logf("GPIO: %s map, radio SCK %d MISO %d MOSI %d CS %d GDO0 %d GDO2 %d, audio %d relay %d (active %s) LED %d button %d\n",
     customPins ? "custom" : "default", pins.sck, pins.miso, pins.mosi, pins.cs, pins.clock, pins.data,
-    pins.buzzer, pins.relay, pins.relayActiveLow ? "low" : "high", pins.led, pins.button);
+    pins.audio, pins.relay, pins.relayActiveLow ? "low" : "high", pins.led, pins.button);
   loadWifiConfig(wifiConfig); wifiMode = wifiConfig.mode;
   WiFi.persistent(false); WiFi.setHostname("reolink-chime");
   if (wifiMode == chime::WifiMode::Off) {
@@ -160,8 +160,10 @@ void setup() {
       WiFi.begin(settings.ssid,settings.wifiPassword); stationStarted=millis();
     } else startAp();
   }
-  restartRadio(); if (settings.paired && radio.healthy) rfLink.startJoin(millis());
+  restartRadio();
   if (wifiMode != chime::WifiMode::Off) registerWeb(); // The web server needs the network stack.
+  // Web preference migration can pause RF for NVS writes; join afterwards.
+  if (settings.paired && radio.healthy) rfLink.startJoin(millis());
 }
 
 void loop() {
@@ -186,13 +188,18 @@ void loop() {
   serviceRingLog();
   saveLearnedPolarity();
   serviceAfc();
+  static uint32_t buttonPinRevision=0;
+  static bool authResetHandled=false;
   const bool down=pins.button>=0 && digitalRead(pins.button)==LOW;
+  if (buttonPinRevision!=pinMapRevision) {
+    buttonPinRevision=pinMapRevision; buttonWasDown=down; buttonAt=millis();
+    resetHandled=true; authResetHandled=true;
+  }
   if (down && !buttonWasDown) { buttonAt=millis(); resetHandled=false; }
   if (down && !resetHandled && uint32_t(millis()-buttonAt)>=8000) {
     // Client mode forgets the network; access point/off only return to client mode.
     recoverWifi(wifiMode == chime::WifiMode::Client); resetHandled=true;
   }
-  static bool authResetHandled=false;
   if (!down) authResetHandled=false;
   else if (!authResetHandled && auth.enabled && uint32_t(millis()-buttonAt)>=15000) {
     // Physical access recovers a forgotten password: sign-in off, credentials kept.

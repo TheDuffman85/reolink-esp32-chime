@@ -10,6 +10,8 @@
 #include "Version.h"
 #include "WebAuth.h"
 #include "WebUi.h"
+#include "SetupSound.h"
+#include <cstddef>
 
 WebServer server(80);
 
@@ -17,6 +19,7 @@ namespace {
 bool otaAuthorized = false;
 String otaError;
 uint32_t otaStartedAt = 0;
+bool setupVisible = true;
 
 // Validate types/ranges before changing any live or persisted setting.
 bool integerField(JsonObjectConst obj, const char *name, int64_t min, int64_t max, int64_t &value) {
@@ -98,6 +101,16 @@ void registerWeb() {
   static bool registered = false;
   if (registered) return;
   registered = true;
+  // Preserve first-run visibility even if pairing finishes before the wizard.
+  // Older, already-paired installations start with the wizard hidden.
+  Preferences uiPrefs;
+  radio.pause();
+  if (uiPrefs.begin("webui", false)) {
+    setupVisible = uiPrefs.getBool("setup", !settings.paired);
+    if (!uiPrefs.isKey("setup") && !uiPrefs.putBool("setup", setupVisible)) storageOk = false;
+    uiPrefs.end();
+  } else storageOk = false;
+  restartRadio();
   const char *headers[] = {"X-CSRF-Token", "Cookie"}; server.collectHeaders(headers, 2);
   const auto page = [](const char *html) {
     server.sendHeader("Cache-Control", "no-store");
@@ -117,6 +130,27 @@ void registerWeb() {
     page(LoginUi);
   });
   registerAuthRoutes();
+  server.on("/api/setup", HTTP_POST, []() {
+    if (!mutationAuthorized()) return;
+    StaticJsonDocument<128> doc;
+    if (deserializeJson(doc,server.arg("plain")) || !doc.is<JsonObject>() ||
+        doc.size()!=1 || !doc["visible"].is<bool>()) {
+      errorReply(400,"Expected {visible: true or false}"); return;
+    }
+    const bool visible = doc["visible"].as<bool>();
+    if (visible != setupVisible) {
+      if (otaStarted || restartAt || rfLink.busy()) { errorReply(409,"Wait for the update or radio handshake to finish"); return; }
+      Preferences prefs;
+      radio.pause();
+      const bool opened = prefs.begin("webui", false);
+      const bool saved = opened && prefs.putBool("setup", visible)==1;
+      if (opened) prefs.end();
+      restartRadio();
+      if (!saved) { storageOk=false; errorReply(500,"Could not save Setup visibility"); return; }
+      setupVisible=visible;
+    }
+    doc["visible"]=setupVisible; jsonReply(200,doc);
+  });
   server.on("/api/status", HTTP_GET, []() {
     if (!authenticated()) return;
     StaticJsonDocument<3072> doc;
@@ -135,6 +169,7 @@ void registerWeb() {
     doc["sweep_steps"]=22;
     doc["pairing"]=rfLink.state(); doc["profile"]=settings.profile;
     doc["paired"]=settings.paired; doc["joined"]=rfLink.profileReady();
+    doc["setup_visible"]=setupVisible;
     doc["node_id"]=hex32(settings.nodeId);
     doc["identity_compatible"]=chime::compatibleNodeId(settings.nodeId);
     doc["transmitted"]=transmitted; doc["transmit_errors"]=transmitErrors;
@@ -257,23 +292,28 @@ void registerWeb() {
   });
   server.on("/api/gong/test", HTTP_POST, []() {
     if (!mutationAuthorized()) return;
-    // Optional overrides preview a sound without saving it: {"type":0-2,
+    // Optional overrides preview a sound without saving it: {"type":0-2,"audio_output":0-1,
     // "melody":0-2,"volume":0-100,"pattern":0-4,"pulse_ms":50-2000,"gap_ms":100-3000}.
-    GongRequest request = gongRequest(4); uint8_t flags = 0;
+    GongRequest request = gongRequest(4); uint8_t flags = 0, mode = gongx.type, output = gongAudioOutput;
     StaticJsonDocument<256> doc;
     const auto in = [&](const char *key, int lo, int hi) {
       return doc[key].is<int>() && doc[key].as<int>() >= lo && doc[key].as<int>() <= hi;
     };
     if (!deserializeJson(doc,server.arg("plain")) && doc.is<JsonObject>() && doc.size()) {
       flags = chime::RingPreview;
-      if (in("type",0,chime::GongKinds-1)) request.type=static_cast<GongType>(doc["type"].as<int>());
+      if (in("type",0,chime::GongKinds-1)) mode=doc["type"].as<int>();
+      if (in("audio_output",0,chime::AudioOutputs-1)) output=doc["audio_output"].as<int>();
       if (in("melody",0,2)) request.tone.melody=doc["melody"].as<int>();
       if (in("volume",0,100)) request.tone.volume=doc["volume"].as<int>();
+      if (doc["extra_relay"].is<bool>()) request.tone.relay=doc["extra_relay"].as<bool>();
+      if (in("extra_relay_ms",50,2000)) request.tone.relayMs=doc["extra_relay_ms"].as<int>();
       if (in("pattern",0,RelayPatterns-1)) request.pattern=doc["pattern"].as<int>();
       if (in("pulse_ms",50,2000)) request.pulseMs=doc["pulse_ms"].as<int>();
       if (in("gap_ms",100,3000)) request.gapMs=doc["gap_ms"].as<int>();
     }
-    if (request.type == GongType::Relay && pins.relay < 0) { errorReply(409,"No relay GPIO configured"); return; }
+    request.type = outputType(mode, output);
+    if (const char *error = outputError(request.type, pins)) { errorReply(409,error); return; }
+    if ((request.type==GongType::Pwm || request.type==GongType::Dac) && request.tone.relay && pins.relay<0) { errorReply(409,"Assign a relay GPIO for the extra pulse"); return; }
     const auto outcome = playChime(chime::RingSource::Web, request, 4, flags);
     if (outcome == chime::RingOutcome::Busy) { errorReply(503,"Gong busy/unavailable"); return; }
     messageReply(outcome == chime::RingOutcome::Silent ? "Gong type is None: logged without sound" : "Playing test sound");
@@ -281,8 +321,9 @@ void registerWeb() {
   server.on("/api/gong", HTTP_GET, []() {
     if (!authenticated()) return;
     StaticJsonDocument<256> doc;
-    doc["type"]=gongx.type; doc["pattern"]=gongx.pattern; doc["pulse_ms"]=gongx.pulseMs; doc["gap_ms"]=gongx.gapMs;
-    doc["relay_available"]=pins.relay>=0; doc["buzzer_available"]=pins.buzzer>=0;
+    doc["type"]=gongx.type; doc["audio_output"]=gongAudioOutput; doc["pattern"]=gongx.pattern; doc["pulse_ms"]=gongx.pulseMs; doc["gap_ms"]=gongx.gapMs;
+    doc["relay_available"]=pins.relay>=0; doc["pwm_available"]=pins.audio>=0;
+    doc["dac_available"]=pins.audio==25 || pins.audio==26;
     jsonReply(200,doc);
   });
   server.on("/api/gong", HTTP_POST, []() {
@@ -291,19 +332,64 @@ void registerWeb() {
     if (deserializeJson(doc,server.arg("plain")) || !doc.is<JsonObject>()) { errorReply(400,"Expected a JSON object"); return; }
     for (JsonPairConst pair : doc.as<JsonObjectConst>()) {
       const char *key=pair.key().c_str();
-      if ((strcmp(key,"type") && strcmp(key,"pattern") && strcmp(key,"pulse_ms") && strcmp(key,"gap_ms")) ||
+      if ((strcmp(key,"type") && strcmp(key,"audio_output") && strcmp(key,"pattern") && strcmp(key,"pulse_ms") && strcmp(key,"gap_ms")) ||
           !pair.value().is<int>()) { errorReply(400,"Invalid gong settings"); return; }
     }
-    if (doc["type"]==1 && pins.relay<0) { errorReply(409,"Assign a relay GPIO before choosing the relay gong"); return; }
+    chime::ChimeState preview = currentChime();
+    if (const char *error = chime::applyChime(doc.as<JsonObjectConst>(), preview)) { errorReply(400,error); return; }
+    if (const char *error = outputError(outputType(preview.type, preview.audioOutput), pins)) { errorReply(409,error); return; }
     if (const char *error=updateChime(doc.as<JsonObjectConst>(),"web")) { errorReply(400,error); return; }
     messageReply("Gong settings saved");
   });
+  // Validate the selected sound together with its planned output GPIOs. Pins
+  // apply only on Finish; playback is inhibited during the live change.
+  const auto setupSound = [](bool save) {
+    if (!mutationAuthorized()) return;
+    if (otaStarted || restartAt || (save && rfLink.busy())) { errorReply(409,"Wait for the update or radio handshake to finish"); return; }
+    StaticJsonDocument<768> doc;
+    if (deserializeJson(doc,server.arg("plain")) || !doc.is<JsonObject>()) { errorReply(400,"Expected a JSON object"); return; }
+    PinMap savedPins; loadPins(savedPins);
+    chime::SetupOutputPins outputs; outputs.audio=savedPins.audio; outputs.relay=savedPins.relay;
+    outputs.relayActiveLow=savedPins.relayActiveLow;
+    chime::ChimeState next = currentChime();
+    if (const char *error=chime::applySetupSound(doc.as<JsonObjectConst>(),next,outputs)) { errorReply(400,error); return; }
+    PinMap proposed=savedPins; proposed.audio=outputs.audio; proposed.relay=outputs.relay;
+    proposed.relayActiveLow=outputs.relayActiveLow;
+    DynamicJsonDocument reply(3072); JsonArray issues=reply.createNestedArray("issues");
+    bool ok=checkPins(proposed,[](void *ctx,const char *role,PinIssue level,const char *text) {
+      JsonObject i=static_cast<JsonArray *>(ctx)->createNestedObject();
+      i["role"]=role; i["level"]=level==PinIssue::Error?"error":level==PinIssue::Warning?"warning":"info"; i["text"]=text;
+    },&issues);
+    const char *outputIssue=outputError(outputType(next.type,next.audioOutput),proposed);
+    if (!outputIssue && next.type==0 && next.extraRelay && proposed.relay<0) outputIssue="Assign a relay GPIO for the extra pulse";
+    if (outputIssue) {
+      JsonObject i=issues.createNestedObject(); i["role"]=next.type==1 || (next.extraRelay && proposed.relay<0)?"relay":"audio";
+      i["level"]="error"; i["text"]=outputIssue; ok=false;
+    }
+    const bool changed=memcmp(&proposed,&pins,offsetof(PinMap,relayActiveLow)) || proposed.relayActiveLow!=pins.relayActiveLow;
+    reply["ok"]=ok; reply["pins_changed"]=changed; reply["restart_required"]=false;
+    if (!save) { jsonReply(200,reply); return; }
+    if (!ok) { reply["error"]="Fix the wiring errors first"; jsonReply(400,reply); return; }
+    if (changed) {
+      gong.inhibit(true); radio.pause(); const bool stored=savePins(proposed); restartRadio();
+      if (!stored) { gong.inhibit(false); errorReply(500,"Could not save output wiring"); return; }
+    }
+    if (const char *error=updateChime(doc["chime"].as<JsonObjectConst>(),"setup",&proposed)) {
+      if (changed) { radio.pause(); savePins(savedPins); restartRadio(); gong.inhibit(false); }
+      errorReply(500,error); return;
+    }
+    if (changed) applyPinsLive(proposed);
+    reply["message"]="Sound and wiring saved and applied";
+    jsonReply(200,reply);
+  };
+  server.on("/api/setup/sound/check",HTTP_POST,[setupSound]() { setupSound(false); });
+  server.on("/api/setup/sound",HTTP_POST,[setupSound]() { setupSound(true); });
   server.on("/api/pins", HTTP_GET, []() {
     if (!authenticated()) return;
     StaticJsonDocument<1024> doc; const PinMap defaults;
     const auto put = [](JsonObject o, const PinMap &m) {
       o["sck"]=m.sck; o["miso"]=m.miso; o["mosi"]=m.mosi; o["cs"]=m.cs; o["clock"]=m.clock; o["data"]=m.data;
-      o["buzzer"]=m.buzzer; o["relay"]=m.relay; o["led"]=m.led; o["button"]=m.button;
+      o["audio"]=m.audio; o["relay"]=m.relay; o["led"]=m.led; o["button"]=m.button;
       o["relay_active_low"]=m.relayActiveLow;
     };
     put(doc.createNestedObject("pins"),pins); put(doc.createNestedObject("defaults"),defaults);
@@ -313,12 +399,13 @@ void registerWeb() {
   // Validates (and with /api/pins saves) a GPIO map; issues explain each finding.
   const auto pinRequest = [](bool save) {
     if (!mutationAuthorized()) return;
+    if (save && (otaStarted || restartAt || rfLink.busy())) { errorReply(409,"Wait for the update or radio handshake to finish"); return; }
     StaticJsonDocument<512> doc;
     if (deserializeJson(doc,server.arg("plain")) || !doc.is<JsonObject>()) { errorReply(400,"Expected a JSON object"); return; }
     PinMap next=pins;
     struct { const char *key; int8_t PinMap::*pin; } keys[] = {{"sck",&PinMap::sck},{"miso",&PinMap::miso},
       {"mosi",&PinMap::mosi},{"cs",&PinMap::cs},{"clock",&PinMap::clock},{"data",&PinMap::data},
-      {"buzzer",&PinMap::buzzer},{"relay",&PinMap::relay},{"led",&PinMap::led},{"button",&PinMap::button}};
+      {"audio",&PinMap::audio},{"relay",&PinMap::relay},{"led",&PinMap::led},{"button",&PinMap::button}};
     for (const auto &k : keys) if (doc.containsKey(k.key)) {
       if (!doc[k.key].is<int>() || doc[k.key].as<int>() < -1 || doc[k.key].as<int>() > 39) { errorReply(400,"GPIO numbers are -1 to 39"); return; }
       next.*(k.pin)=doc[k.key].as<int>();
@@ -328,21 +415,25 @@ void registerWeb() {
       next.relayActiveLow=doc["relay_active_low"].as<bool>();
     }
     DynamicJsonDocument reply(3072); JsonArray issues=reply.createNestedArray("issues");
-    const bool ok=checkPins(next,[](void *ctx, const char *role, PinIssue level, const char *text) {
+    bool ok=checkPins(next,[](void *ctx, const char *role, PinIssue level, const char *text) {
       JsonObject i=static_cast<JsonArray *>(ctx)->createNestedObject();
       i["role"]=role; i["level"]=level==PinIssue::Error?"error":level==PinIssue::Warning?"warning":"info"; i["text"]=text;
     },&issues);
-    if (gongx.type==1 && next.relay<0) {
-      JsonObject i=issues.createNestedObject(); i["role"]="relay"; i["level"]="warning";
-      i["text"]="The relay gong is selected; without a relay GPIO it falls back to silence.";
+    if (const char *error = outputError(outputType(gongx.type, gongAudioOutput), next)) {
+      JsonObject i=issues.createNestedObject(); i["role"]=gongx.type==1 ? "relay" : "audio";
+      const bool invalidDac = gongx.type==0 && gongAudioOutput==1 && next.audio>=0;
+      i["level"]=invalidDac ? "error" : "warning";
+      if (invalidDac) ok=false;
+      i["text"]=error;
     }
     reply["ok"]=ok;
     if (save) {
       if (!ok) { reply["error"]="Fix the GPIO errors first"; jsonReply(400,reply); return; }
       radio.pause(); const bool saved=savePins(next); restartRadio();
       if (!saved) { errorReply(500,"Could not save GPIO settings"); return; }
-      logf("GPIO map saved; restart to apply\n");
-      reply["message"]="GPIO settings saved. Restart the chime to apply them.";
+      applyPinsLive(next);
+      logf("GPIO map saved and applied\n");
+      reply["message"]="GPIO settings saved and applied.";
     }
     jsonReply(200,reply);
   };
@@ -350,9 +441,11 @@ void registerWeb() {
   server.on("/api/pins", HTTP_POST, [pinRequest]() { pinRequest(true); });
   server.on("/api/pins/reset", HTTP_POST, []() {
     if (!mutationAuthorized()) return;
+    if (otaStarted || restartAt || rfLink.busy()) { errorReply(409,"Wait for the update or radio handshake to finish"); return; }
     radio.pause(); const bool saved=savePins(PinMap{}); restartRadio();
     if (!saved) { errorReply(500,"Could not save GPIO settings"); return; }
-    messageReply("Default GPIO settings restored. Restart the chime to apply them.");
+    applyPinsLive(PinMap{});
+    messageReply("Default GPIO settings restored and applied.");
   });
   server.on("/api/wifi/scan", HTTP_GET, []() {
     if (!authenticated()) return;

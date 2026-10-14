@@ -1,7 +1,119 @@
 {
-  "embedded_ui_sha256": "36ba5f6f848a356ba1ebe99f6566ea769ab9fb67c4fe938f76e87a4dd5ad0c52",
+  "embedded_ui_sha256": "0ee61424c746a44587f7bfe0dd52f48a339bc057947d0395e4e8e68b6290fe4b",
   "data": "Synthetic API fixtures; no device connection",
   "screenshots": [
+    {
+      "file": "ui-setup-hidden-desktop.png",
+      "tab": "home",
+      "viewport": {
+        "width": 1100,
+        "height": 700
+      }
+    },
+    {
+      "file": "ui-setup-hidden-mobile.png",
+      "tab": "home",
+      "viewport": {
+        "width": 390,
+        "height": 900
+      }
+    },
+    {
+      "file": "ui-settings-setup-hidden-desktop.png",
+      "tab": "settings",
+      "viewport": {
+        "width": 1100,
+        "height": 900
+      }
+    },
+    {
+      "file": "ui-settings-setup-hidden-mobile.png",
+      "tab": "settings",
+      "viewport": {
+        "width": 390,
+        "height": 900
+      }
+    },
+    {
+      "file": "ui-settings-wifi-ap-desktop.png",
+      "tab": "settings",
+      "viewport": {
+        "width": 1100,
+        "height": 1100
+      }
+    },
+    {
+      "file": "ui-settings-wifi-ap-mobile.png",
+      "tab": "settings",
+      "viewport": {
+        "width": 390,
+        "height": 1016
+      }
+    },
+    {
+      "file": "ui-settings-wifi-off-desktop.png",
+      "tab": "settings",
+      "viewport": {
+        "width": 1100,
+        "height": 1100
+      }
+    },
+    {
+      "file": "ui-settings-wifi-off-mobile.png",
+      "tab": "settings",
+      "viewport": {
+        "width": 390,
+        "height": 900
+      }
+    },
+    {
+      "file": "ui-settings-wifi-desktop.png",
+      "tab": "settings",
+      "viewport": {
+        "width": 1100,
+        "height": 1100
+      }
+    },
+    {
+      "file": "ui-settings-wifi-mobile.png",
+      "tab": "settings",
+      "viewport": {
+        "width": 390,
+        "height": 1691
+      }
+    },
+    {
+      "file": "ui-settings-pair-desktop.png",
+      "tab": "settings",
+      "viewport": {
+        "width": 1100,
+        "height": 1100
+      }
+    },
+    {
+      "file": "ui-settings-pair-mobile.png",
+      "tab": "settings",
+      "viewport": {
+        "width": 390,
+        "height": 1441
+      }
+    },
+    {
+      "file": "ui-settings-setup-shown-desktop.png",
+      "tab": "settings",
+      "viewport": {
+        "width": 1100,
+        "height": 900
+      }
+    },
+    {
+      "file": "ui-settings-setup-shown-mobile.png",
+      "tab": "settings",
+      "viewport": {
+        "width": 390,
+        "height": 900
+      }
+    },
     {
       "file": "web-status.png",
       "tab": "home",
@@ -12,6 +124,14 @@
     },
     {
       "file": "web-sound.png",
+      "tab": "sound",
+      "viewport": {
+        "width": 1100,
+        "height": 1000
+      }
+    },
+    {
+      "file": "web-sound-dac.png",
       "tab": "sound",
       "viewport": {
         "width": 1100,
@@ -48,6 +168,30 @@
       "viewport": {
         "width": 1100,
         "height": 800
+      }
+    },
+    {
+      "file": "web-setup-review.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 1100,
+        "height": 850
+      }
+    },
+    {
+      "file": "web-setup-complete.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 1100,
+        "height": 850
+      }
+    },
+    {
+      "file": "ui-complete-mobile.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 390,
+        "height": 900
       }
     },
     {
@@ -139,6 +283,294 @@
       }
     },
     {
+      "file": "ui-auth-off-desktop.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 1100,
+        "height": 850
+      }
+    },
+    {
+      "file": "ui-auth-off-mobile.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 390,
+        "height": 900
+      }
+    },
+    {
+      "file": "ui-auth-enabled-desktop.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 1100,
+        "height": 850
+      }
+    },
+    {
+      "file": "ui-auth-enabled-mobile.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 390,
+        "height": 985
+      }
+    },
+    {
+      "file": "ui-auth-review-desktop.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 1100,
+        "height": 850
+      }
+    },
+    {
+      "file": "ui-auth-review-mobile.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 390,
+        "height": 900
+      }
+    },
+    {
+      "file": "ui-auth-existing-desktop.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 1100,
+        "height": 850
+      }
+    },
+    {
+      "file": "ui-auth-existing-mobile.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 390,
+        "height": 1005
+      }
+    },
+    {
+      "file": "ui-sound-gong-desktop.png",
+      "tab": "sound",
+      "viewport": {
+        "width": 1100,
+        "height": 1000
+      }
+    },
+    {
+      "file": "ui-sound-gong-mobile.png",
+      "tab": "sound",
+      "viewport": {
+        "width": 390,
+        "height": 1813
+      }
+    },
+    {
+      "file": "ui-setup-gong-desktop.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 1100,
+        "height": 1000
+      }
+    },
+    {
+      "file": "ui-setup-gong-mobile.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 390,
+        "height": 1795
+      }
+    },
+    {
+      "file": "ui-review-gong-desktop.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 1100,
+        "height": 850
+      }
+    },
+    {
+      "file": "ui-review-gong-mobile.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 390,
+        "height": 900
+      }
+    },
+    {
+      "file": "ui-sound-pwm-desktop.png",
+      "tab": "sound",
+      "viewport": {
+        "width": 1100,
+        "height": 1000
+      }
+    },
+    {
+      "file": "ui-sound-pwm-mobile.png",
+      "tab": "sound",
+      "viewport": {
+        "width": 390,
+        "height": 2074
+      }
+    },
+    {
+      "file": "ui-setup-pwm-desktop.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 1100,
+        "height": 1000
+      }
+    },
+    {
+      "file": "ui-setup-pwm-mobile.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 390,
+        "height": 1770
+      }
+    },
+    {
+      "file": "ui-review-pwm-desktop.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 1100,
+        "height": 850
+      }
+    },
+    {
+      "file": "ui-review-pwm-mobile.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 390,
+        "height": 900
+      }
+    },
+    {
+      "file": "ui-sound-dac-desktop.png",
+      "tab": "sound",
+      "viewport": {
+        "width": 1100,
+        "height": 1000
+      }
+    },
+    {
+      "file": "ui-sound-dac-mobile.png",
+      "tab": "sound",
+      "viewport": {
+        "width": 390,
+        "height": 2095
+      }
+    },
+    {
+      "file": "ui-setup-dac-desktop.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 1100,
+        "height": 1000
+      }
+    },
+    {
+      "file": "ui-setup-dac-mobile.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 390,
+        "height": 1770
+      }
+    },
+    {
+      "file": "ui-review-dac-desktop.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 1100,
+        "height": 850
+      }
+    },
+    {
+      "file": "ui-review-dac-mobile.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 390,
+        "height": 900
+      }
+    },
+    {
+      "file": "ui-sound-none-desktop.png",
+      "tab": "sound",
+      "viewport": {
+        "width": 1100,
+        "height": 1000
+      }
+    },
+    {
+      "file": "ui-sound-none-mobile.png",
+      "tab": "sound",
+      "viewport": {
+        "width": 390,
+        "height": 979
+      }
+    },
+    {
+      "file": "ui-setup-none-desktop.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 1100,
+        "height": 1000
+      }
+    },
+    {
+      "file": "ui-setup-none-mobile.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 390,
+        "height": 905
+      }
+    },
+    {
+      "file": "ui-review-none-desktop.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 1100,
+        "height": 850
+      }
+    },
+    {
+      "file": "ui-review-none-mobile.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 390,
+        "height": 900
+      }
+    },
+    {
+      "file": "ui-wiring-desktop.png",
+      "tab": "settings",
+      "viewport": {
+        "width": 1100,
+        "height": 1000
+      }
+    },
+    {
+      "file": "ui-wiring-mobile.png",
+      "tab": "settings",
+      "viewport": {
+        "width": 390,
+        "height": 3548
+      }
+    },
+    {
+      "file": "ui-setup-extra-relay-desktop.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 1100,
+        "height": 1000
+      }
+    },
+    {
+      "file": "ui-setup-extra-relay-mobile.png",
+      "tab": "setup",
+      "viewport": {
+        "width": 390,
+        "height": 1959
+      }
+    },
+    {
       "file": "web-update-countdown.png",
       "tab": "settings",
       "viewport": {
@@ -168,6 +600,30 @@
     768,
     1100
   ],
+  "checked_output_types": [
+    "Gong",
+    "Audio",
+    "None"
+  ],
+  "checked_audio_outputs": [
+    "PWM",
+    "DAC"
+  ],
+  "audio_preview_outputs": [
+    0,
+    1,
+    1,
+    1,
+    0
+  ],
+  "setup_live_pins_only_after_finish": true,
+  "setup_auth_only_after_finish": true,
+  "expected_auth_storage_failure_tested": true,
+  "setup_visibility_persists": true,
+  "settings_wifi_pair_without_setup": true,
+  "wifi_mode_first_client_only_connection": true,
+  "setup_sound_drafts_survive_refresh": true,
+  "audio_previews_match_relay_draft": true,
   "page_errors": [],
   "unexpected_requests": [],
   "page_horizontal_overflow": false
