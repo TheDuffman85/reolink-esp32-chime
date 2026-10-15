@@ -85,6 +85,7 @@ Returns a flat status object, plus the nested `mute` object:
 | `pairing`, `link`, `profile`, `paired`, `joined` | Latest pairing slot's state, overall link state (a pairing/joining link first), any doorbell saved, any doorbell paired, every paired doorbell joined |
 | `pair_slot`, `pair_joined`, `pair_doorbell_id` | Slot of the latest pairing, whether it finished joined, and its doorbell ID |
 | `doorbells`, `max_doorbells`, `trim_spread` | Paired doorbells (below), the slot limit (4) and the spread of their trim estimates |
+| `extender` | Range extender state and counters (experimental, [below](#post-apiextender)) |
 | `node_id`, `doorbell_id`, `identity_compatible`, `chime_name` | Hex identities (`doorbell_id` is the first doorbell), signed-ID compatibility and name |
 | `transmitted`, `transmit_errors`, `packets`, `crc_ti`, `crc_bad`, `crc_ccitt` | RF counters since restart |
 | `dropped`, `invalid_lengths`, `false_syncs`, `radio_resets` | Receiver error/reset counters |
@@ -172,6 +173,28 @@ also removes paired status. Manual profiles receive only; they cannot join or
 transmit. Numeric hex ID `11223344` has on-air bytes `44 33 22 11`.
 
 Example: `{"frequency_hz":868000000,"auto_trim":true,"rx_mode":0}`.
+
+### POST `/api/extender`
+
+Experimental range extender, off by default: repeats the frames between a
+paired doorbell and other chimes (see [PROTOCOL.md](PROTOCOL.md#relaying-unverified) and the
+[firmware guide](firmware/README.md#several-doorbells-and-range-extender)).
+The body holds `enabled` and/or `pairing`, both booleans; anything else returns
+400. `enabled` persists in the `radio` NVS namespace and switching it resets the
+counters and closes the pairing window; during pairing/join, an update or a
+pending restart a change returns 409. `pairing: true` relays pairing frames
+(discovery and the key exchange) for five minutes from now, `false` stops that
+early; it is not saved, and `pairing: true` with the extender off returns 409.
+Example: `{"enabled": true, "pairing": true}`.
+
+`/api/status` reports it as `extender`: `enabled`, `queued`, `sent`, `failed`
+(radio errors), `expired` (not sent within one second), `rate_limited`,
+`queue_full`, `pairing_queued` (pairing frames among `queued`),
+`pairing_remaining_s` (0 when closed), and `chimes`, up to four other chimes heard since the counters
+were reset, each with `id`, `doorbell_id`, `doorbell_name`, `last_frame_ms`
+(uptime) and `frames` (frames relayed). Packet history results end in
+`relay queued`, `relay repeat`, `relay rate limited` or `relay queue full` for
+frames the extender handled.
 
 ## Chime, sound and mute
 

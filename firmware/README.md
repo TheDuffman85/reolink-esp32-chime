@@ -156,6 +156,7 @@ expect saved settings and pairing to be cleared.
 | `Protocol.cpp` | PN9, CRC, frame parsing and ring retry cache |
 | `Link.cpp` | Portable pairing/join/rejoin/heartbeat state machine |
 | `Doorbells.cpp` | Portable set of links for up to four doorbells (experimental beyond the first) |
+| `Relay.cpp` | Portable range extender queue: frame selection, repeats, quiet wait and rate limit (experimental) |
 | `AppProtocol.cpp` | Portable V2 name/volume/LED/config/version handlers |
 | `Identity.h` | Signed-positive node ID generation |
 | `Band.h`, `Afc.cpp` | Band selection, frequency-trim tracker and per-doorbell midpoint |
@@ -167,12 +168,48 @@ expect saved settings and pairing to be cleared.
 | `Mqtt.cpp`, `MqttService.cpp` | MQTT worker, state/events/commands and discovery |
 | `WebUi.h` | Embedded HTML/CSS/JavaScript interface and sign-in page |
 
+## Several doorbells and range extender
+
+Both are experimental. PROTOCOL.md describes the protocol side:
+[several doorbells](../PROTOCOL.md#several-doorbells-per-chime-unverified) and
+[relaying](../PROTOCOL.md#relaying-unverified). `Doorbells` keeps one `Link` per doorbell (up to
+four, one chime ID). Received frames go to every link, which accepts only its
+own IDs and session; the links' pending frames take turns on the radio. A
+pairing response from a doorbell already held by another slot is not
+acknowledged, so that attempt fails and the doorbell keeps its key. The ring
+retry cache is keyed by doorbell ID, so one doorbell's rejoin keeps the others'
+history. Automatic trim keeps a median estimate per doorbell and receives at
+the midpoint of the estimates; each transmission uses the addressed doorbell's
+own estimate in FSCTRL0. More than 16 steps of spread keeps the 162.5 kHz
+receive filter.
+
+The range extender (`Relay.cpp`, off by default, NVS `radio/extender`) relays a
+frame when it has a valid TI CRC, is type 2 (MAC length 20 or 24), type 3 (at
+least 17) or type 4 (at least 16), its doorbell ID at +8 is a paired doorbell
+and its chime ID at +4 is nonzero and not this chime's. Pairing is relayed
+only during a five-minute window opened from the UI or API: type 0 discovery
+(length 8) from any other chime, and 32-byte type-1 frames with opcode 0 or 1
+whose doorbell ID at +12 is a paired doorbell. The frame is re-encoded from the decoded bytes, so the on-air bytes
+are unchanged, and sent with the polarity it arrived with and the addressed
+doorbell's transmit trim. The chime's own link frames go first.
+
+A queued frame is sent once nothing has been received for 30 ms (the end of a
+ring's retry rounds), at the latest 250 ms after it arrived, and dropped if
+unsent after one second. An identical frame (FNV-1a over length and MAC) is
+relayed at most once a second, so a ring's rounds produce one relay, 2-second
+join retries are each relayed and faster discoveries are thinned to one a
+second. At most four frames wait; a token bucket allows a burst of 20, then one
+per three seconds. Pairing frames do not use it; the window bounds them.
+Discovery frames do not add a chime to the status list. While the extender is on, frames addressed to other chimes do not
+feed the doorbell's trim estimate or its last-frame RSSI, because the other
+chime may have sent them; they still reset the automatic trim's silence timer.
+
 ## Storage and timing
 
 Settings schema 2 preserves WiFi credentials, RF parameters, identity and profile.
 Schema-1 profiles migrate as passive. Separate NVS namespaces hold app config
 (`chimeapp`), gong (`gongx`), GPIO (`pins`), permanent mute (`mute`), authentication
-(`auth`), integrations (`integrations`), ring history (`ringlog`), receiver (`radio`),
+(`auth`), integrations (`integrations`), ring history (`ringlog`), receiver and range extender (`radio`),
 automatic trim (`afc`), additional doorbells with labels and measured trims
 (`doorbells`; the first doorbell stays in the Settings blob), WiFi mode (`wifi`) and UI preferences (`webui`, with
 Setup visibility in `setup` and initial completion in `init_done`).
@@ -226,7 +263,9 @@ PN9/CRC, both polarities/all alignments, malformed-length recovery, duplicates,
 rollover and a million noise bits. Link tests use real AES for pairing/join,
 repeated responses, cancellation, timeout and TX failures. Doorbell tests pair
 a second doorbell beside a joined one and cover routing, transmit turns,
-duplicate/replaced slots, removal and failed additions. App tests cover exact
+duplicate/replaced slots, removal and failed additions. Range extender tests
+cover which frames are relayed, unchanged bytes, repeat suppression, the quiet
+wait, expiry and the queue and rate limits. App tests cover exact
 lengths, full-u32 bounds, reply capacity and LED/name/version round trips.
 Additional tests cover identity, AFC, bands, sessions, throttle, persistent
 history, WiFi modes and restricted MQTT updates. The checked-in generated fuzz

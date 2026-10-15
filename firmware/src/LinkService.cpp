@@ -11,6 +11,7 @@ Radio radio;
 chime::Decoder decoder;
 chime::Duplicates duplicates;
 chime::Doorbells doorbells;
+chime::Relay extender;
 uint32_t transmitted = 0, transmitErrors = 0, radioResets = 0, rawBytes = 0;
 uint32_t lastPacketAt = 0, packetCount = 0, crcTi = 0, crcBad = 0, crcCcitt = 0, rings = 0, lastRing = 0;
 uint32_t lastAppAt = 0, appRequests = 0; uint8_t lastAppOpcode = 0;
@@ -53,6 +54,23 @@ size_t peers(uint32_t *ids) {
     if (const uint32_t peer = doorbells.link(i).peer()) ids[n++] = peer;
   return n;
 }
+// Paired doorbells: the only ones whose frames the range extender relays.
+size_t pairedIds(uint32_t *ids) {
+  size_t n = 0;
+  for (size_t i = 0; i < doorbells.count(); ++i) {
+    const auto &p = doorbells.link(i).profile();
+    if (p.paired && p.source) ids[n++] = p.source;
+  }
+  return n;
+}
+// Encrypted frames carry the chime ID at +4 whichever side sent them. With the
+// range extender on, frames of the doorbell's conversation with another chime
+// may come from that chime, so they say nothing about the doorbell's
+// frequency or signal; only frames addressed to this chime are attributed.
+bool otherChimeFrame(const chime::Packet &packet) {
+  return radioOptions.extender && packet.size >= 13 && (packet.bytes[2] & 0x3F) >= 2 &&
+    chime::read32le(packet.bytes + 5) != settings.nodeId;
+}
 // Drops estimates of forgotten doorbells and failed pairing candidates.
 // Without any doorbell, frames collected under ID 0 stay.
 void retainTrims() {
@@ -86,6 +104,7 @@ void trackFrequency(const chime::Packet &packet, const RxFrame &frame) {
   uint32_t id;
   if (!radioOptions.autoTrim || !frame.offsetValid || !afcSource(packet, id)) return;
   afcFrameAt = millis();
+  if (otherChimeFrame(packet)) return;
   if (id) trimSet.remove(0); // Unattributed frames no longer count.
   trimSet.add(id, frame.trim, frame.offset);
   int8_t target;
@@ -259,11 +278,22 @@ void onPacket(const chime::Packet &packet, const RxFrame &frame) {
   entry.hex = packet.size > 2 && (packet.bytes[2] & 0x3F) == 1 ?
     "[pairing frame redacted]" : hexBytes(packet.bytes, packet.size);
   trackFrequency(packet, frame);
-  if (packet.size >= 13 && chime::validPacket(packet) && doorbells.find(chime::read32le(packet.bytes + 9)) >= 0)
+  if (packet.size >= 13 && chime::validPacket(packet) && !otherChimeFrame(packet) &&
+      doorbells.find(chime::read32le(packet.bytes + 9)) >= 0)
     noteSeen(chime::read32le(packet.bytes + 9), frame.rssi);
   size_t linkSlot = 0;
   const char *linkResult = doorbells.receive(packet, millis(), linkSlot);
   entry.result = linkResult ? String(linkResult) : decodeRing(packet, entry.rssi);
+  if (radioOptions.extender) {
+    uint32_t ids[chime::MaxDoorbells];
+    switch (extender.offer(packet, settings.nodeId, ids, pairedIds(ids), millis())) {
+      case chime::Relay::Verdict::Queued: entry.result += "; relay queued"; break;
+      case chime::Relay::Verdict::Repeat: entry.result += "; relay repeat"; break;
+      case chime::Relay::Verdict::Limited: entry.result += "; relay rate limited"; break;
+      case chime::Relay::Verdict::Full: entry.result += "; relay queue full"; break;
+      case chime::Relay::Verdict::Ignored: break;
+    }
+  }
   logf("[rx] #%u %.1f dBm %+.1f kHz %s crc=%s len=%u type=%u: %s\n", packetCount, entry.rssi,
     frame.offset * 26000.0f / 16384.0f, packet.inverted ? "inv" : "norm", packet.crc==chime::Crc::Ti8005 ? "TI" :
     packet.crc==chime::Crc::CcittDiagnostic ? "CCITT" : "bad", unsigned(packet.size),
@@ -568,6 +598,18 @@ void serviceLink() {
     const bool sent = radio.transmit(air, size, sweepCombo == UINT32_MAX ? transmitTrim(slot) : sweepTrim);
     if (sent) ++transmitted; else ++transmitErrors;
     decoder.reset(); doorbells.consume(slot, sent, millis());
+  } else if (radioOptions.extender) {
+    // Own frames first; relayed ones fill the gaps, unchanged and with the
+    // trim used for their doorbell.
+    if (const chime::RelayFrame *r = extender.peek(millis(), lastPacketAt)) {
+      uint8_t air[Radio::MaxTransmitSize]; const size_t size = min(r->air.size, sizeof(air));
+      for (size_t i = 0; i < size; ++i) air[i] = r->inverted ? uint8_t(~r->air.bytes[i]) : r->air.bytes[i];
+      const int bell = doorbells.find(r->doorbell);
+      const uint32_t age = millis() - r->at;
+      const bool sent = radio.transmit(air, size, bell < 0 ? sweepTrim : transmitTrim(size_t(bell)));
+      decoder.reset(); extender.consume(sent);
+      logf("[relay] %s %u bytes after %u ms\n", sent ? "sent" : "transmit failed:", unsigned(size), unsigned(age));
+    }
   }
   if (doorbells.dirty()) {
     for (size_t i = 0; i < doorbells.count(); ++i)
@@ -579,6 +621,16 @@ void serviceLink() {
       logf("Pairing profile could not be saved; retry pairing/rejoin after fixing NVS\n");
     }
   }
+}
+
+bool setExtender(bool on) {
+  if (on == radioOptions.extender) return true;
+  RadioOptions next = radioOptions; next.extender = on;
+  radio.pause(); const bool ok = saveRadioOptions(next); restartRadio();
+  if (!ok) { storageOk = false; return false; }
+  radioOptions = next; extender.reset();
+  logf("[relay] range extender %s (experimental)\n", on ? "on" : "off");
+  return true;
 }
 
 void saveLearnedPolarity() {

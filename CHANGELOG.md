@@ -2,6 +2,17 @@
 
 Changes to the ESP32 firmware, listed per version from [`firmware/version.json`](firmware/version.json).
 
+## 1.0.34 - 2026-10-15
+
+### Added
+
+- Experimental range extender, off by default (**Settings → Doorbell → Range extender**). It repeats, unchanged and still encrypted, the frames between a doorbell paired with this chime and another chime, so a chime out of the doorbell's range can still ring. Pairing is repeated only during a five-minute window opened with **Relay pairing**; pairing near the doorbell is preferred. Untested with real chimes.
+- API: `POST /api/extender` switches it and opens the pairing window; `/api/status` reports its counters and the other chimes heard. Packet history marks relayed frames.
+
+### Changed
+
+- While the range extender is on, frames addressed to other chimes no longer feed the doorbell's frequency estimate or signal report.
+
 ## 1.0.33 - 2026-10-15
 
 ### Added

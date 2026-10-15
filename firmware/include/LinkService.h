@@ -3,6 +3,7 @@
 #include "Afc.h"
 #include "Doorbells.h"
 #include "Hardware.h"
+#include "Relay.h"
 #include "Settings.h"
 
 // CC1101 reception/transmission and the doorbell links: software decoding,
@@ -14,6 +15,9 @@ extern Radio radio;
 extern chime::Decoder decoder;
 extern chime::Duplicates duplicates;
 extern chime::Doorbells doorbells;
+// Range extender (experimental, radioOptions.extender): frames between a paired
+// doorbell and another chime, sent again when the link has nothing to send.
+extern chime::Relay extender;
 
 // Counters for the status API and serial diagnostics.
 extern uint32_t transmitted, transmitErrors, radioResets, rawBytes;
@@ -77,6 +81,8 @@ int8_t transmitTrim(size_t slot);
 void receiveRadio();
 // Queues app replies, advances the links and transmits; saves new profiles.
 void serviceLink();
+// Switches the range extender and saves the choice; false if NVS failed.
+bool setExtender(bool on);
 // Persists an Auto RX polarity once reception is quiet.
 void saveLearnedPolarity();
 // Once a second: reinitialises a CC1101 that lost its configuration.

@@ -43,9 +43,10 @@ bool saveDoorbellStore(const DoorbellStore &store);
 // Radio options added after Settings' layout was fixed; own NVS namespace.
 // autoTrim: automatic trim (Afc.h). calibrated: a trim was measured; until
 // then packet-engine RX uses the wide bandwidth. rxMode: RxMode, packet
-// engine by default.
+// engine by default. extender: experimental range extender (Relay.h), off by
+// default.
 struct RadioOptions { bool autoTrim = true; bool calibrated = false;
-                      RxMode rxMode = RxMode::PacketEngine; };
+                      RxMode rxMode = RxMode::PacketEngine; bool extender = false; };
 bool loadRadioOptions(RadioOptions &options);
 bool saveRadioOptions(const RadioOptions &options);
 // WiFi mode and access-point hotspot, NVS namespace "wifi".

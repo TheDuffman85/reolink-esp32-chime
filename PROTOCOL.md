@@ -326,27 +326,88 @@ the explicitly written fields. The replacement does not implement every frame
 type or vendor feature; broadcast timing negotiation and vendor RF firmware
 distribution are outside its supported feature set.
 
-## Several doorbells (experimental)
+## Several doorbells per chime (unverified)
 
-Nothing in the frames is specific to one doorbell: every encrypted frame
-carries both the chime and the doorbell ID, and each doorbell issues its own key
-and session. The replacement therefore keeps an independent link (pairing key,
-session, sequence, heartbeat, retries and rejoin) per doorbell, up to four, all
-under one chime ID. Received frames are matched by their IDs and session; one
-radio transmits the links' frames in turn. Pairing an additional doorbell runs
-the normal discovery/key/join exchange while the other links stay joined. A
-pairing response from a doorbell that is already paired is not acknowledged:
-that pairing attempt fails and the doorbell keeps its existing key. Duplicate suppression is keyed by
-doorbell ID, so rejoining one doorbell does not affect another's history.
+The frame format does not tie a chime ID to one doorbell. Every type-2, -3 and
+-4 frame names both the chime (+4) and the doorbell (+8); each doorbell issues
+its own AES key during pairing and its own session during join. One chime ID
+can therefore hold independent associations with several doorbells, each with
+its own key, session, sequence counters, heartbeat and rejoin, identified by
+the (chime ID, doorbell ID, session) triple.
 
-Each doorbell's crystal differs slightly. Automatic trim keeps one estimate per
-doorbell (median of its own frames) and receives at the midpoint of the
-estimates, so the two furthest apart are each off by half their spread; each
-transmission uses the addressed doorbell's own estimate in FSCTRL0 for that
-frame. More than 16 steps of spread keeps the 162.5 kHz receive filter.
-This behaviour is untested with real doorbells; whether a doorbell objects to
-its chime also being paired elsewhere is unknown, but doorbells do not
-exchange chime lists over this RF link.
+- A further doorbell is added with the normal discovery, key and join
+  exchange. Discovery (type 0) names no doorbell, so whichever doorbell is in
+  its add-chime flow answers. A doorbell installs a new key only after the
+  chime echoes it, so an existing association keeps its key as long as a
+  second pair response from the same doorbell is not acknowledged.
+- Sequence numbers and sessions are per association and may coincide between
+  doorbells, so ring retry detection must include the doorbell ID.
+- Each crystal has its own offset. Frames from several doorbells arrive at
+  slightly different carriers, so the receive bandwidth must cover their
+  spread, and a transmission is best tuned to the addressed doorbell's offset.
+- Doorbells do not exchange chime lists over this RF link. Whether a doorbell
+  objects to its chime also being associated with another doorbell is unknown;
+  none of this has been verified with real devices.
+
+## Relaying (unverified)
+
+The link has no relay concept: no hop count, no transmitter address separate
+from the chime/doorbell IDs, and no time-to-live. It nevertheless permits a
+transparent relay on the same carrier:
+
+- The PHY length, MAC header and CRC are not encrypted, and the AES-CTR
+  keystream depends only on the key. A third device can de-whiten a frame,
+  check its CRC and transmit the same bytes again without the key; the
+  receiver cannot tell a relayed frame from a direct one.
+- Types 2-4 use one header layout in both directions, and their payloads are
+  encrypted with the association's key. Without the key, the direction is only
+  partly visible: a 20-byte type-2 MAC is a chime's join request, but a 24-byte
+  one may be the doorbell's response or the chime's acknowledgement, and type-3
+  lengths overlap between rings, heartbeats and settings exchanges. A relay for
+  one association therefore has to forward both directions.
+- Pairing can be relayed too, with two limits. Type 0 discovery names only
+  the chime, so a relay cannot attribute it to a doorbell and can only bound
+  it in time, for example to a window opened while the doorbell is in its
+  add-chime flow. The two 32-byte type-1 frames name the doorbell at MAC +12
+  (payload +4) and differ in the payload opcode: `00` for the doorbell's key
+  response, `01` for the chime's echo. Both carry the AES key in plaintext, so
+  relaying them extends the area in which the key can be received; pairing
+  within the doorbell's direct range avoids that.
+- Without a hop count, a relay must suppress frames it has already forwarded
+  to avoid loops between relays or with its own retransmissions.
+
+### Timing
+
+Radios on one carrier are half duplex, so a relay must receive a frame
+completely before sending it. At 25 kbit/s a frame of `n` MAC bytes occupies
+`(n + 11) × 0.32 ms` with preamble, sync, PHY length and CRC: 9.92 ms for a
+ring (20 bytes), 11.2 ms for a 24-byte join frame and 34.2 ms for the 96-byte
+maximum. Each relayed hop adds at least that time plus the radio turnaround.
+
+A ring is queued as ten rounds with the same sequence about 10 ms apart, so a
+relay transmitting during those rounds overlaps the remaining ones; waiting for
+them to end delays the ring by roughly 200 ms. Rings have no acknowledgement
+and repeats are recognised by their sequence, so a delayed or duplicated ring
+is harmless. Type-2 frames carry no sequence and use a zero CTR counter: a
+retried join request is byte-identical to the previous one, as is a repeated
+response for the same session, so a relayed copy cannot be told from a retry.
+Discovery frames are byte-identical every time. A pairing relayed in both
+directions adds one hop to each of discovery, key response, echo and the
+three join frames.
+
+### Duplicates and collisions
+
+A device within range of both the sender and the relay receives each frame
+twice. Rings are deduplicated by sequence. A repeated join response with the
+same session is acknowledged again (see [Join and rejoin](#join-and-rejoin));
+how an original doorbell
+handles a repeated join request or acknowledgement, and whether it accepts its
+own frames heard back from a relay, is unknown. A relayed copy can also
+coincide with the receiver's reply to the direct copy. Relaying at least doubles
+the airtime of the relayed association, which counts towards the duty-cycle
+limit of the band (1% in 868.0-868.6 MHz under ETSI EN 300 220).
+
+None of this has been verified with original devices.
 
 ## Implementation map
 
@@ -355,6 +416,7 @@ exchange chime lists over this RF link.
 | [Protocol.cpp](firmware/src/Protocol.cpp) | PN9, CRC, envelope, ring parsing and duplicate cache |
 | [Link.cpp](firmware/src/Link.cpp) | Pairing, join, heartbeat, retry and addressing state machine |
 | [Doorbells.cpp](firmware/src/Doorbells.cpp) | One link per doorbell: frame routing, transmit turns, slots |
+| [Relay.cpp](firmware/src/Relay.cpp) | Range extender: frame selection, repeat suppression, quiet wait, rate limit |
 | [AppProtocol.cpp](firmware/src/AppProtocol.cpp) | Name/volume/LED/config/version payloads |
 | [LinkService.cpp](firmware/src/LinkService.cpp) | AES, persistent profiles and ring/app dispatch |
 | [Hardware.cpp](firmware/src/Hardware.cpp) | CC1101 registers, SPI reception and TX |

@@ -19,6 +19,7 @@ timing still need hardware verification.
 
 - Normal Reolink pairing with an individual AES key; saved credentials and automatic rejoin.
 - Experimental: up to four doorbells ringing one chime, each with its own key and ringtone.
+- Experimental, off by default: range extender that repeats a paired doorbell's radio traffic with other chimes.
 - Ten PWM/DAC melodies and ten relay patterns, matching Reolink's ten ringtone slots.
 - Every ring plays the ringtone it requests (Reolink app, MQTT or API), or one fixed sound when overridden.
 - Silent mode, permanent/timed mute, optional extra relay pulse and configurable LED.
@@ -229,6 +230,34 @@ doorbells yet**; please report whether it works.
   more than about 25 kHz apart, reception switches to the wider bandwidth.
 
 ![Two doorbells](firmware/docs/images/ui-settings-doorbells-desktop.png)
+
+### Range extender (experimental)
+
+A chime that is too far from the doorbell, for example an original Reolink
+chime, can be reached through this ESP32 placed between the two. Switch on
+**Settings → Doorbell → Range extender**; it is off by default. **This has not
+been tested with real chimes yet**; please report whether it works.
+
+> **Pair near the doorbell if you can.** Pair the other chime next to the
+> doorbell, then move it to its place. If it cannot reach the doorbell, choose
+> **Relay pairing** on the Range extender card and add the chime in the
+> Reolink app within 5 minutes. Pairing frames carry the chime's key
+> unencrypted, and relaying sends them further.
+
+- Only frames between a doorbell paired with this ESP32 and another chime are
+  repeated: rings, join, heartbeats, settings requests and disconnects. Other
+  doorbells' traffic and frames for this chime are not.
+- Pairing is repeated only during the 5 minutes after **Relay pairing**: the
+  other chime's search for a doorbell (from any chime, as it names no
+  doorbell) and the key exchange with a paired doorbell.
+- The frames are repeated unchanged and stay encrypted; the ESP32 needs no key
+  for the other chime. Both directions are repeated, because a frame's header
+  does not say whether the doorbell or the chime sent it.
+- Frames are sent once reception goes quiet, each one once per retry burst and
+  at most 20 per minute after a burst of 20, so the extra airtime stays small.
+- All devices share one channel. The doorbell and the other chime may receive
+  a frame twice, directly and repeated, and the repeated copy can collide with
+  their reply. Switch the extender off if either misbehaves.
 
 The main Reolink chime Test/play control was observed to send RF. Ringtone-list
 preview icons did not send RF in the tested setup; use the main control or a

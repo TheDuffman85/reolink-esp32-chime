@@ -202,7 +202,7 @@ void registerWeb() {
   });
   server.on("/api/status", HTTP_GET, []() {
     if (!authenticated()) return;
-    DynamicJsonDocument doc(4096);
+    DynamicJsonDocument doc(5120);
     doc["csrf"]=csrf; doc["uptime_ms"]=millis(); doc["wifi_connected"]=WiFi.status()==WL_CONNECTED;
     doc["ssid"]=WiFi.SSID(); doc["ip"]=WiFi.status()==WL_CONNECTED?WiFi.localIP().toString():WiFi.softAPIP().toString();
     doc["ap_active"]=apActive; doc["ap_name"]=apName; doc["wifi_mode"]=chime::WifiModeNames[uint8_t(wifiMode)];
@@ -236,6 +236,18 @@ void registerWeb() {
       if (trimSet.estimate(p.source,trim)) b["trim"]=trim; else b["trim"]=nullptr;
     }
     doc["trim_spread"]=trimSet.spread();
+    JsonObject ext=doc.createNestedObject("extender");
+    ext["enabled"]=radioOptions.extender; ext["queued"]=extender.queued; ext["sent"]=extender.sent;
+    ext["failed"]=extender.failed; ext["expired"]=extender.expired;
+    ext["rate_limited"]=extender.limited; ext["queue_full"]=extender.full;
+    ext["pairing_queued"]=extender.pairingQueued;
+    ext["pairing_remaining_s"]=(extender.pairingRemaining(millis())+999)/1000;
+    JsonArray others=ext.createNestedArray("chimes");
+    for (size_t i=0;i<extender.chimes();++i) {
+      const chime::Relay::Chime &c=extender.chime(i); JsonObject o=others.createNestedObject();
+      o["id"]=hex32(c.id); o["doorbell_id"]=hex32(c.doorbell); o["doorbell_name"]=doorbellNameFor(c.doorbell);
+      o["last_frame_ms"]=c.at; o["frames"]=c.frames;
+    }
     doc["setup_visible"]=setupVisible;
     doc["setup_required"]=setupRequired;
     doc["node_id"]=hex32(settings.nodeId);
@@ -647,6 +659,34 @@ void registerWeb() {
     if (slot<0) { errorReply(404,"Unknown doorbell"); return; }
     if (!renameDoorbell(size_t(slot),name)) { errorReply(500,"Could not save the doorbell name"); return; }
     messageReply("Doorbell name saved");
+  });
+  // {"enabled", "pairing"}: the experimental range extender (Relay.h) and
+  // its pairing window; either or both.
+  server.on("/api/extender", HTTP_POST, []() {
+    if (!mutationAuthorized()) return;
+    StaticJsonDocument<96> doc;
+    const bool parsed = !deserializeJson(doc,server.arg("plain")) && doc.is<JsonObject>();
+    const bool hasEnabled = parsed && doc.containsKey("enabled"), hasPairing = parsed && doc.containsKey("pairing");
+    if (!parsed || !(hasEnabled || hasPairing) || doc.size()!=size_t(hasEnabled)+size_t(hasPairing) ||
+        (hasEnabled && !doc["enabled"].is<bool>()) || (hasPairing && !doc["pairing"].is<bool>())) {
+      errorReply(400,"Expected {enabled} and/or {pairing}, true or false"); return;
+    }
+    const bool enabled = hasEnabled ? doc["enabled"].as<bool>() : radioOptions.extender;
+    if (hasPairing && doc["pairing"].as<bool>() && !enabled) { errorReply(409,"Switch the range extender on first"); return; }
+    if (enabled != radioOptions.extender) {
+      if (otaStarted || restartAt || doorbells.busy()) { errorReply(409,"Wait for the update or radio handshake to finish"); return; }
+      if (!setExtender(enabled)) { errorReply(500,"Could not save the range extender setting"); return; }
+    }
+    if (hasPairing) {
+      if (doc["pairing"].as<bool>()) {
+        extender.openPairing(millis());
+        logf("[relay] relaying pairing for %u min\n", unsigned(chime::Relay::PairingMs / 60000));
+      } else if (extender.pairing(millis())) {
+        extender.closePairing(); logf("[relay] pairing relay stopped\n");
+      }
+    }
+    messageReply(!radioOptions.extender?"Range extender off":extender.pairing(millis())?
+      "Relaying pairing for 5 minutes":"Range extender on");
   });
   // {"doorbell_id"}: forgets one doorbell; later ones move up a slot.
   server.on("/api/doorbells/forget", HTTP_POST, []() {
