@@ -1,5 +1,6 @@
 #pragma once
 #include <Arduino.h>
+#include <esp_timer.h>
 #include "Settings.h"
 
 // Core runtime shared by the firmware modules, defined in src/main.cpp:
@@ -34,6 +35,11 @@ void startAp();
 // Physical-access recovery (button 8 s, serial 'w'): back to client mode with
 // the setup hotspot open; `forget` also clears the saved network.
 void recoverWifi(bool forget);
+
+// Reported uptime: millis() wraps after 49.7 days, so the API and MQTT use the
+// 64-bit timer. uptimeAt() maps a millis() stamp from this boot onto it.
+inline uint64_t uptimeMs() { return uint64_t(esp_timer_get_time()) / 1000; }
+inline uint64_t uptimeAt(uint32_t stamp) { return uptimeMs() - uint32_t(millis() - stamp); }
 
 // UTC seconds, or 0 until SNTP has set the clock.
 uint32_t epochNow();

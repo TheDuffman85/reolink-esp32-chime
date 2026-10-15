@@ -2,6 +2,12 @@
 
 Changes to the ESP32 firmware, listed per version from [`firmware/version.json`](firmware/version.json).
 
+## 1.0.36 - 2026-10-15
+
+### Fixed
+
+- Uptime no longer restarts at zero after 49.7 days: `uptime_ms` in the API and `uptime_s` over MQTT use the 64-bit timer. Reported timestamps (`last_frame_ms`, `last_ring_ms`, `last_request_ms`, packet and ring log `ms`) use the same base, so "last frame … ago" stays correct after the rollover.
+
 ## 1.0.35 - 2026-10-15
 
 ### Changed

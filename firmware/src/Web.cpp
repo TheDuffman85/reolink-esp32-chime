@@ -203,7 +203,7 @@ void registerWeb() {
   server.on("/api/status", HTTP_GET, []() {
     if (!authenticated()) return;
     DynamicJsonDocument doc(5120);
-    doc["csrf"]=csrf; doc["uptime_ms"]=millis(); doc["wifi_connected"]=WiFi.status()==WL_CONNECTED;
+    doc["csrf"]=csrf; doc["uptime_ms"]=uptimeMs(); doc["wifi_connected"]=WiFi.status()==WL_CONNECTED;
     doc["ssid"]=WiFi.SSID(); doc["ip"]=WiFi.status()==WL_CONNECTED?WiFi.localIP().toString():WiFi.softAPIP().toString();
     doc["ap_active"]=apActive; doc["ap_name"]=apName; doc["wifi_mode"]=chime::WifiModeNames[uint8_t(wifiMode)];
     doc["radio_ok"]=radio.healthy; doc["radio_error"]=radio.lastError();
@@ -230,7 +230,7 @@ void registerWeb() {
       b["paired"]=p.paired; b["joined"]=link.profileReady(); b["state"]=link.state();
       if (link.profileReady()) b["session"]=hex16(p.pair); else b["session"]=nullptr;
       uint32_t at; float rssi;
-      if (doorbellSeen(p.source,at,rssi)) { b["last_frame_ms"]=at; b["rssi_dbm"]=roundf(rssi*10)/10; }
+      if (doorbellSeen(p.source,at,rssi)) { b["last_frame_ms"]=uptimeAt(at); b["rssi_dbm"]=roundf(rssi*10)/10; }
       else { b["last_frame_ms"]=nullptr; b["rssi_dbm"]=nullptr; }
       int8_t trim;
       if (trimSet.estimate(p.source,trim)) b["trim"]=trim; else b["trim"]=nullptr;
@@ -246,7 +246,7 @@ void registerWeb() {
     for (size_t i=0;i<extender.chimes();++i) {
       const chime::Relay::Chime &c=extender.chime(i); JsonObject o=others.createNestedObject();
       o["id"]=hex32(c.id); o["doorbell_id"]=hex32(c.doorbell); o["doorbell_name"]=doorbellNameFor(c.doorbell);
-      o["last_frame_ms"]=c.at; o["frames"]=c.frames;
+      o["last_frame_ms"]=uptimeAt(c.at); o["frames"]=c.frames;
     }
     doc["setup_visible"]=setupVisible;
     doc["setup_required"]=setupRequired;
@@ -256,7 +256,7 @@ void registerWeb() {
     doc["packets"]=packetCount; doc["crc_ti"]=crcTi; doc["crc_bad"]=crcBad; doc["crc_ccitt"]=crcCcitt;
     doc["dropped"]=Radio::dropped; doc["invalid_lengths"]=Radio::invalidLengths+decoder.invalidLengths;
     doc["false_syncs"]=Radio::falseSyncs;
-    doc["rings"]=rings; if (rings) doc["last_ring_ms"]=lastRing; else doc["last_ring_ms"]=nullptr;
+    doc["rings"]=rings; if (rings) doc["last_ring_ms"]=uptimeAt(lastRing); else doc["last_ring_ms"]=nullptr;
     doc["gong_active"]=gong.active(); doc["gong_ready"]=gongReady;
     doc["storage_ok"]=storageOk; doc["learned_polarity"]=settings.learnedPolarity;
     doc["wifi_configured"]=strlen(settings.ssid)>0; doc["wifi_rssi"]=WiFi.status()==WL_CONNECTED?WiFi.RSSI():0;
@@ -331,8 +331,8 @@ void registerWeb() {
     doc["joined"]=doorbells.count() && doorbells.link(0).profileReady(); doc["doorbell_id"]=hex32(settings.source);
     doc["node_id"]=hex32(settings.nodeId); doc["session"]=hex16(doorbells.link(0).profile().pair);
     doc["requests"]=appRequests; doc["last_opcode"]=lastAppOpcode;
-    if (appRequests) doc["last_request_ms"]=lastAppAt; else doc["last_request_ms"]=nullptr;
-    doc["uptime_ms"]=millis();
+    if (appRequests) doc["last_request_ms"]=uptimeAt(lastAppAt); else doc["last_request_ms"]=nullptr;
+    doc["uptime_ms"]=uptimeMs();
     jsonReply(200,doc);
   });
   server.on("/api/chime", HTTP_POST, []() {
@@ -365,7 +365,7 @@ void registerWeb() {
     for (size_t i=0;i<packetLogSize;++i) {
       const auto &entry=packetLog[(packetLogNext+PacketLogSize-packetLogSize+i)%PacketLogSize];
       JsonObject obj=array.createNestedObject();
-      obj["id"]=entry.id; obj["ms"]=entry.ms; obj["rssi_dbm"]=entry.rssi; obj["inverted"]=entry.inverted;
+      obj["id"]=entry.id; obj["ms"]=uptimeAt(entry.ms); obj["rssi_dbm"]=entry.rssi; obj["inverted"]=entry.inverted;
       if (entry.offsetValid) obj["offset_khz"]=roundf(entry.offset*26000.0f/16384.0f*10)/10;
       else obj["offset_khz"]=nullptr; // Esp32 receive mode cannot measure it.
       if (entry.epoch) { obj["epoch"]=entry.epoch; obj["epoch_ms"]=entry.epochMs; } else obj["epoch"]=nullptr;
@@ -757,7 +757,7 @@ void registerWeb() {
   server.on("/api/rings", HTTP_GET, []() {
     if (!authenticated()) return;
     DynamicJsonDocument doc(12288);
-    doc["uptime_ms"]=millis(); const uint32_t epoch=epochNow(); if (epoch) doc["epoch"]=epoch; else doc["epoch"]=nullptr;
+    doc["uptime_ms"]=uptimeMs(); const uint32_t epoch=epochNow(); if (epoch) doc["epoch"]=epoch; else doc["epoch"]=nullptr;
     doc["last_id"]=ringLog.lastId(); doc["rings_since_start"]=rings;
     JsonArray list=doc.createNestedArray("rings");
     for (size_t i=0;i<ringLog.size();++i) ringJson(ringLog.newest(i),list.createNestedObject(),false);

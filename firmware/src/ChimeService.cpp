@@ -209,7 +209,7 @@ void ringJson(const chime::RingEvent &e, JsonObject o, bool labels) {
     const String time = isoTime(e.epoch);
     if (time.length()) o["time"] = time; else o["time"] = nullptr;
   } else {
-    o["type"] = chime::modeFromStoredType(e.type); o["sound"] = e.sound; o["ms"] = e.ms;
+    o["type"] = chime::modeFromStoredType(e.type); o["sound"] = e.sound; o["ms"] = e.flags & chime::RingPreviousBoot ? uint64_t(e.ms) : uptimeAt(e.ms);
     if (e.epoch) o["epoch"] = e.epoch; else o["epoch"] = nullptr;
     o["previous_boot"] = bool(e.flags & chime::RingPreviousBoot);
   }

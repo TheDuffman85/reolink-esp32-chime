@@ -238,7 +238,7 @@ void serviceMqtt() {
   doc["ip"] = WiFi.localIP().toString(); doc["time_synced"] = epochNow() != 0;
   String key; serializeJson(doc, key);
   if (key == lastMqttStatus && uint32_t(millis() - mqttStatusAt) < 60000) return;
-  doc["wifi_rssi"] = WiFi.RSSI(); doc["uptime_s"] = millis() / 1000; doc["firmware"] = FIRMWARE_VERSION;
+  doc["wifi_rssi"] = WiFi.RSSI(); doc["uptime_s"] = uptimeMs() / 1000; doc["firmware"] = FIRMWARE_VERSION;
   String body; serializeJson(doc, body);
   if (mqtt.publish(mqttBase + "/status", body, true)) { lastMqttStatus = key; mqttStatusAt = millis(); }
 }
