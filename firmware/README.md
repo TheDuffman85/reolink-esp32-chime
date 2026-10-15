@@ -151,9 +151,10 @@ expect saved settings and pairing to be cleared.
 | `Audio.h` | Portable DAC sine samples, phase increments and DAC pin constraints |
 | `Protocol.cpp` | PN9, CRC, frame parsing and ring retry cache |
 | `Link.cpp` | Portable pairing/join/rejoin/heartbeat state machine |
+| `Doorbells.cpp` | Portable set of links for up to four doorbells (experimental beyond the first) |
 | `AppProtocol.cpp` | Portable V2 name/volume/LED/config/version handlers |
 | `Identity.h` | Signed-positive node ID generation |
-| `Band.h`, `Afc.cpp` | Band selection and frequency-trim tracker |
+| `Band.h`, `Afc.cpp` | Band selection, frequency-trim tracker and per-doorbell midpoint |
 | `Settings.cpp`, `WifiConfig.cpp` | Validation, persistence and migration |
 | `ChimeService.cpp`, `ChimeControl.cpp` | Playback, mute, live GPIO application and remote-safe controls |
 | `SetupSound.cpp` | Restricted setup sound/wiring JSON validation |
@@ -168,7 +169,8 @@ Settings schema 2 preserves WiFi credentials, RF parameters, identity and profil
 Schema-1 profiles migrate as passive. Separate NVS namespaces hold app config
 (`chimeapp`), gong (`gongx`), GPIO (`pins`), permanent mute (`mute`), authentication
 (`auth`), integrations (`integrations`), ring history (`ringlog`), receiver (`radio`),
-automatic trim (`afc`), WiFi mode (`wifi`) and UI preferences (`webui`, with
+automatic trim (`afc`), additional doorbells with labels and measured trims
+(`doorbells`; the first doorbell stays in the Settings blob), WiFi mode (`wifi`) and UI preferences (`webui`, with
 Setup visibility in `setup` and initial completion in `init_done`).
 Until initial setup finishes, the UI exposes only Setup, overriding saved browser
 page preferences even after pairing or a restart. Finish saves sound/wiring and
@@ -183,7 +185,9 @@ method (0 PWM, 1 DAC) in the `gongx/audioout` NVS key, remembered across mode
 changes. The ringtone override is `gongx/override` (absent means off). Legacy type 0 migrates to Audio/PWM and type 3 to Audio/DAC. Ring history
 retains its compact legacy backend IDs internally and exposes the new mode plus
 Audio method in JSON. The Audio output GPIO retains the former tone-output slot
-in the ten-byte pin map. Ring history writes after three seconds of
+in the ten-byte pin map. Ring history images are version 2, adding the ringing
+doorbell's ID; version-1 images still restore, while older firmware ignores
+version-2 history after a downgrade. Ring history writes after three seconds of
 quiet reception/playback. Timed mute, packet history and text logs are RAM-only.
 Flash writes/OTA pause reception. Check dropped/error counts under WiFi load.
 
@@ -216,7 +220,9 @@ bash tools/test.sh
 The script uses AddressSanitizer/UndefinedBehaviorSanitizer. Protocol tests cover
 PN9/CRC, both polarities/all alignments, malformed-length recovery, duplicates,
 rollover and a million noise bits. Link tests use real AES for pairing/join,
-repeated responses, cancellation, timeout and TX failures. App tests cover exact
+repeated responses, cancellation, timeout and TX failures. Doorbell tests pair
+a second doorbell beside a joined one and cover routing, transmit turns,
+duplicate/replaced slots, removal and failed additions. App tests cover exact
 lengths, full-u32 bounds, reply capacity and LED/name/version round trips.
 Additional tests cover identity, AFC, bands, sessions, throttle, persistent
 history, WiFi modes and restricted MQTT updates. The checked-in generated fuzz

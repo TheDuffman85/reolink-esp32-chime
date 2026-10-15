@@ -66,7 +66,10 @@ class Radio {
   void remapPins(const PinMap &map);
   // Complete on-air bytes, including the software preamble, sync and CRC.
   // Frames above the 64-byte FIFO are streamed. Always resumes RX.
+  // trim: FSCTRL0 for this frame only (one doorbell among several); RX keeps
+  // the trim set by begin()/setTrim().
   bool transmit(const uint8_t *frame, size_t size);
+  bool transmit(const uint8_t *frame, size_t size, int8_t trim);
   static constexpr size_t MaxTransmitSize = 255;
   // Changes FSCTRL0 (about 1.587 kHz per step) and recalibrates into RX.
   bool setTrim(int8_t trim);
@@ -92,7 +95,7 @@ class Radio {
   bool readStable(uint8_t address, uint8_t &value);
   bool waitForState(uint8_t expected, uint32_t timeoutMs);
   bool beginLocked(const RadioSettings &settings, bool wide, RxMode mode);
-  bool transmitLocked(const uint8_t *frame, size_t size);
+  bool transmitLocked(const uint8_t *frame, size_t size, int8_t trim);
   bool enterRx();
   bool restartRx();
   void serviceRx();

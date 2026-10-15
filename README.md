@@ -18,6 +18,7 @@ presets have not been validated. Audible PWM/DAC output and physical relay
 timing still need hardware verification.
 
 - Normal Reolink pairing with an individual AES key; saved credentials and automatic rejoin.
+- Experimental: up to four doorbells ringing one chime, each with its own key and ringtone.
 - Ten PWM/DAC melodies and ten relay patterns, matching Reolink's ten ringtone slots.
 - Every ring plays the ringtone it requests (Reolink app, MQTT or API), or one fixed sound when overridden.
 - Silent mode, permanent/timed mute, optional extra relay pulse and configurable LED.
@@ -205,6 +206,28 @@ New node IDs use `1..0x7FFFFFFF`. If an older identity is marked incompatible,
 remove its chime entry in Reolink and start pairing to replace it. Canceling a
 handshake preserves the previously saved profile. If the doorbell already
 accepted a replacement key, repeat pairing to reconcile the two devices.
+
+### Additional doorbells (experimental)
+
+Setup pairs one doorbell. To ring the same chime from more doorbells (up to
+four), open **Settings → Doorbell → Pair another doorbell** and pair it the same
+way, with the chime close to that doorbell. **This has not been tested with real
+doorbells yet**; please report whether it works.
+
+- Each doorbell keeps its own key, session and rejoin; the others stay linked
+  while one is paired, reconnected or forgotten.
+- A doorbell can only be paired once. Selecting an already paired doorbell in
+  the Reolink app ends the attempt and leaves its existing pairing intact.
+- Each doorbell plays the ringtone chosen in its own Reolink app. The ring log,
+  MQTT events and Home Assistant name the doorbell that rang; labels are set in
+  Settings → Doorbell.
+- Name, volume and LED are shared by all doorbells: the latest change in any
+  doorbell's Reolink app (or in this UI) applies.
+- With automatic trim, the receiver tunes to the middle of the doorbells'
+  measured frequencies and transmits to each doorbell on its own. If they are
+  more than about 25 kHz apart, reception switches to the wider bandwidth.
+
+![Two doorbells](firmware/docs/images/ui-settings-doorbells-desktop.png)
 
 The main Reolink chime Test/play control was observed to send RF. Ringtone-list
 preview icons did not send RF in the tested setup; use the main control or a

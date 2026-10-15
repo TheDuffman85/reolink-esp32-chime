@@ -27,6 +27,12 @@ g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-fram
   -I "$firmware_dir/include" "$firmware_dir/src/Protocol.cpp" "$firmware_dir/src/Link.cpp" \
   "$firmware_dir/test/link_test.cpp" -lcrypto -o "$link_binary"
 ASAN_OPTIONS="detect_leaks=0:${ASAN_OPTIONS:-}" "$link_binary"
+doorbells_binary="$(mktemp /tmp/reolink-doorbells-test.XXXXXX)"
+trap 'rm -f -- "$test_binary" "$link_binary" "$app_binary" "$identity_binary" "$doorbells_binary"' EXIT
+g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -g \
+  -I "$firmware_dir/include" "$firmware_dir/src/Protocol.cpp" "$firmware_dir/src/Link.cpp" \
+  "$firmware_dir/src/Doorbells.cpp" "$firmware_dir/test/doorbells_test.cpp" -lcrypto -o "$doorbells_binary"
+ASAN_OPTIONS="detect_leaks=0:${ASAN_OPTIONS:-}" "$doorbells_binary"
 g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -g \
   -I "$firmware_dir/include" "$firmware_dir/src/Protocol.cpp" "$firmware_dir/src/AppProtocol.cpp" \
   "$firmware_dir/test/app_protocol_test.cpp" -o "$app_binary"
@@ -35,12 +41,12 @@ g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-fram
   -I "$firmware_dir/include" "$firmware_dir/test/identity_test.cpp" -o "$identity_binary"
 ASAN_OPTIONS="detect_leaks=0:${ASAN_OPTIONS:-}" "$identity_binary"
 afc_binary="$(mktemp /tmp/reolink-afc-test.XXXXXX)"
-trap 'rm -f -- "$test_binary" "$link_binary" "$app_binary" "$identity_binary" "$afc_binary"' EXIT
+trap 'rm -f -- "$test_binary" "$link_binary" "$app_binary" "$identity_binary" "$doorbells_binary" "$afc_binary"' EXIT
 g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -g \
   -I "$firmware_dir/include" "$firmware_dir/src/Afc.cpp" "$firmware_dir/test/afc_test.cpp" -o "$afc_binary"
 ASAN_OPTIONS="detect_leaks=0:${ASAN_OPTIONS:-}" "$afc_binary"
 band_binary="$(mktemp /tmp/reolink-band-test.XXXXXX)"
-trap 'rm -f -- "$test_binary" "$link_binary" "$app_binary" "$identity_binary" "$afc_binary" "$band_binary"' EXIT
+trap 'rm -f -- "$test_binary" "$link_binary" "$app_binary" "$identity_binary" "$doorbells_binary" "$afc_binary" "$band_binary"' EXIT
 g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -g \
   -I "$firmware_dir/include" "$firmware_dir/test/band_test.cpp" -o "$band_binary"
 ASAN_OPTIONS="detect_leaks=0:${ASAN_OPTIONS:-}" "$band_binary"
@@ -51,7 +57,7 @@ if [ ! -f "$arduinojson/ArduinoJson.h" ]; then
   exit 1
 fi
 features_binary="$(mktemp /tmp/reolink-features-test.XXXXXX)"
-trap 'rm -f -- "$test_binary" "$link_binary" "$app_binary" "$identity_binary" "$afc_binary" "$band_binary" "$features_binary"' EXIT
+trap 'rm -f -- "$test_binary" "$link_binary" "$app_binary" "$identity_binary" "$doorbells_binary" "$afc_binary" "$band_binary" "$features_binary"' EXIT
 g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -g \
   -I "$firmware_dir/include" -isystem "$arduinojson" "$firmware_dir/src/Protocol.cpp" \
   "$firmware_dir/src/Auth.cpp" "$firmware_dir/src/RingLog.cpp" "$firmware_dir/src/ChimeControl.cpp" \
@@ -64,7 +70,7 @@ declare -A fuzz_sources=(
   [app_protocol]="src/Protocol.cpp src/AppProtocol.cpp"
 )
 fuzz_binary="$(mktemp /tmp/reolink-fuzz-replay.XXXXXX)"
-trap 'rm -f -- "$test_binary" "$link_binary" "$app_binary" "$identity_binary" "$afc_binary" "$band_binary" "$features_binary" "$fuzz_binary"' EXIT
+trap 'rm -f -- "$test_binary" "$link_binary" "$app_binary" "$identity_binary" "$doorbells_binary" "$afc_binary" "$band_binary" "$features_binary" "$fuzz_binary"' EXIT
 for target in protocol link app_protocol; do
   srcs=(); for s in ${fuzz_sources[$target]}; do srcs+=("$firmware_dir/$s"); done
   g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-sanitize-recover=undefined \

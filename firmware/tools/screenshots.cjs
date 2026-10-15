@@ -48,12 +48,23 @@ const status = {
   firmware: 'Synthetic documentation build', version: firmwareVersion, radio_resets: 0,
   ring_seq: 5, auth_enabled: true, auth_user: 'admin', mute: { active: false, permanent: false, remaining_s: 0 }, time_synced: true, epoch: 1791900000, mqtt: 'connected',
 };
+// Per-doorbell status follows the legacy single-doorbell fields; tests add
+// further (experimental) doorbells through extraDoorbells.
+let extraDoorbells = [], firstDoorbellName = '';
+function syncStatus() {
+  const first = { id: doorbellId, name: firstDoorbellName, display_name: firstDoorbellName || 'Doorbell 1',
+    paired: true, joined: status.joined, state: status.pairing, session: status.joined ? '1234' : null,
+    last_frame_ms: 52000, rssi_dbm: -62, trim: 9 };
+  Object.assign(status, { link: status.pairing, pair_slot: 0, pair_joined: status.joined, pair_doorbell_id: doorbellId,
+    max_doorbells: 4, trim_spread: extraDoorbells.length ? 4 : 0,
+    doorbells: status.paired ? [first, ...extraDoorbells] : [] });
+}
 // Ring log fixture: newest first, epoch-stamped like a synchronised clock.
 const ring = (id, ago, source, outcome, extra = {}) => ({ id, source, outcome, type: 1, sound: 0,
   ms: 60000 - ago * 1000, epoch: status.epoch - ago, previous_boot: false, volume: 4, audio_level: 35,
   preview: false, ...(source === 'doorbell' ? { tone: 0, rssi_dbm: -62 } : {}), ...extra });
 const rings = { uptime_ms: 60000, epoch: status.epoch, last_id: 5, rings_since_start: 1, rings: [
-  ring(5, 8, 'doorbell', 'played', { tone: 9, sound: 9 }),
+  ring(5, 8, 'doorbell', 'played', { tone: 9, sound: 9, doorbell: doorbellId }),
   ring(4, 25, 'mqtt', 'played', { sound: 1, volume: 3 }),
   ring(3, 40, 'web', 'played', { sound: 2, preview: true }),
   ring(2, 3600 * 5, 'doorbell', 'chime_muted', { previous_boot: true, tone: 3, sound: 3, rssi_dbm: -70 }),
@@ -99,7 +110,7 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     args: ['--no-sandbox'],
   });
   const results = [], errors = [], unexpected = [], previews = [], setupSaves = [], authSaves = [];
-  const setupVisibilitySaves = [], wifiConnections = [], pairActions = [];
+  const setupVisibilitySaves = [], wifiConnections = [], pairActions = [], pairBodies = [], doorbellActions = [];
   const savedPinMap = { ...pinMap }, defaultPinMap = { ...pinMap };
   let failNextAuthSave=false, expectedAuthErrors=0, failNextSetupSave=false, expectedSetupErrors=0;
   let statusGate=null;
@@ -151,9 +162,13 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
         return route.fulfill({json:{message:'Synthetic WiFi connected'}});
       }
       if (['/api/pair/start','/api/pair/cancel'].includes(url.pathname) && request.method() === 'POST') {
-        pairActions.push(url.pathname);status.joined=false;chime.joined=false;
+        pairActions.push(url.pathname);if(url.pathname.endsWith('/start'))pairBodies.push(request.postDataJSON());status.joined=false;chime.joined=false;
         status.pairing=url.pathname.endsWith('/start')?'discovering':'idle';
         return route.fulfill({json:{message:'Synthetic pairing action'}});
+      }
+      if (['/api/doorbells','/api/doorbells/forget','/api/join/start'].includes(url.pathname) && request.method() === 'POST') {
+        doorbellActions.push([url.pathname, request.postDataJSON()]);
+        return route.fulfill({json:{message:'Synthetic doorbell action'}});
       }
       if (url.pathname === '/api/auth' && request.method() === 'POST') {
         const body=request.postDataJSON();
@@ -207,6 +222,7 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
         ] },
       };
       if(url.pathname==='/api/status'&&statusGate)await statusGate;
+      if(url.pathname==='/api/status')syncStatus();
       if (request.method() === 'GET' && fixtures[url.pathname])
         return route.fulfill({ json: fixtures[url.pathname] });
       unexpected.push(request.method() + ' ' + url.pathname); return route.abort();
@@ -342,6 +358,52 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     assert.equal(await page.locator('#cfgPairTask').isVisible(),false);
     status.joined=true;status.pairing='joined';chime.joined=true;
     await page.evaluate(async()=>{await refresh()});
+    // A second doorbell (experimental): its own card, names, and the add flow.
+    firstDoorbellName='Front door';
+    extraDoorbells=[{ id:'55667788', name:'Back door', display_name:'Back door', paired:true, joined:true, state:'joined',
+      session:'5678', last_frame_ms:58000, rssi_dbm:-71, trim:13 }];
+    await page.evaluate(async()=>{await refresh();openSection('doorbell')});
+    assert.equal(await page.locator('#cfgBells .card').count(),1);
+    assert.equal(await page.locator('#cfgBellTitle').textContent(),'Front door');
+    assert.equal(await page.locator('#cfgBellNameRow').isVisible(),true);
+    assert.equal(await page.locator('#cfgAddCard').isVisible(),true);
+    assert.equal(await page.locator('#cfgUnpair').textContent(),'Forget all doorbells');
+    assert.match(await page.locator('#cfgBells .card').textContent(),/Back door.*Experimental.*55667788/);
+    assert.equal(await page.locator('#sumDoorbell').textContent(),'Linked · 2 doorbells');
+    // Typing a name survives polling, which keeps the card.
+    await page.locator('#cfgBells input').fill('Garden gate');
+    await page.evaluate(async()=>{await refresh()});
+    assert.equal(await page.locator('#cfgBells input').inputValue(),'Garden gate');
+    await page.locator('#cfgBells [data-a="name"]').click();
+    await page.waitForFunction(()=>!document.querySelector('#cfgBells input').dataset.edited);
+    await page.locator('#cfgBells [data-a="rejoin"]').click();
+    await page.waitForFunction(()=>document.getElementById('toast').textContent==='Synthetic doorbell action');
+    assert.deepEqual(doorbellActions,[['/api/doorbells',{doorbell_id:'55667788',name:'Garden gate'}],['/api/join/start',{doorbell_id:'55667788'}]]);
+    await capture('ui-settings-doorbells-desktop.png','settings',1100,1100,'doorbell',true);
+    await capture('ui-settings-doorbells-mobile.png','settings',390,900,'doorbell',true);
+    // The ring log names the doorbell that rang.
+    await select('home');
+    assert.match(await page.locator('#rings li b').first().textContent(),/^Front door/);
+    await select('settings');await page.evaluate(()=>openSection('doorbell'));
+    await page.locator('#cfgAddBell').click();
+    assert.equal(await page.locator('#pTitle').textContent(),'Pair another doorbell');
+    assert.equal(await page.locator('#pAddNote').isVisible(),true);
+    assert.equal(await page.locator('#pBandField').isVisible(),false);
+    // The add flow does not show the first doorbell's link as its own result.
+    assert.equal(await page.locator('#pStart').textContent(),'Start pairing');
+    await capture('ui-settings-add-doorbell-desktop.png','settings',1100,1100,'doorbell',true);
+    await page.locator('#pStart').click();
+    await page.locator('#pCancel').waitFor();
+    await page.locator('#pCancel').click();
+    await page.locator('#pStart').waitFor();
+    assert.deepEqual(pairBodies.at(-1),{add:true});
+    await page.locator('#pNext').click();
+    assert.equal(await page.locator('#pTitle').textContent(),'Pair with your doorbell');
+    status.joined=true;status.pairing='joined';chime.joined=true;
+    extraDoorbells=[];firstDoorbellName='';
+    await page.evaluate(async()=>{await refresh()});
+    assert.equal(await page.locator('#cfgBells .card').count(),0);
+    assert.equal(await page.locator('#cfgUnpair').textContent(),'Forget doorbell');
     // Configured devices offer no way back into Setup.
     assert.deepEqual(await page.locator('#nav button:visible').evaluateAll(buttons=>buttons.map(b=>b.dataset.tab)),['home','sound','settings']);
     assert.equal((await page.locator('#sec-general').textContent()).includes('Setup'),false);
@@ -882,6 +944,7 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
       audio_preview_outputs: previews.map(p => p.audio_output), setup_live_pins_only_after_finish: true, setup_auth_only_after_finish: true, expected_auth_storage_failure_tested: true, setup_only_until_initial_setup_finishes: true, settings_wifi_pair_without_setup: true, wifi_mode_first_client_only_connection: true, setup_sound_drafts_survive_refresh: true, audio_previews_match_relay_draft: true, page_errors: errors, unexpected_requests: unexpected,
       initial_setup_only_until_finish: true, initial_setup_overrides_saved_tabs: true,
       initial_setup_stays_locked_after_pairing_and_save_failure: true,
+      additional_doorbells_experimental: true,
       page_horizontal_overflow: false };
     fs.writeFileSync(path.join(images, 'screenshot-manifest.json'), JSON.stringify(report, null, 2) + '\n');
     console.log(JSON.stringify(report));

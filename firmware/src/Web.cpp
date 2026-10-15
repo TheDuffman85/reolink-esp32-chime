@@ -89,6 +89,19 @@ bool updateSettings(JsonObjectConst obj, Settings &next) {
   }
   return validSettings(next);
 }
+// Slot of {"doorbell_id": "8 hex digits"}; -1 if absent or not paired.
+int doorbellSlot(JsonObjectConst obj) {
+  uint8_t raw[4];
+  const String id = obj["doorbell_id"] | "";
+  if (!parseHex(id, raw, sizeof(raw))) return -1;
+  return doorbells.find(uint32_t(raw[0]) << 24 | uint32_t(raw[1]) << 16 | uint32_t(raw[2]) << 8 | raw[3]);
+}
+// Optional JSON object body; an empty body is an empty object.
+bool optionalBody(JsonDocument &doc) {
+  const String body = server.arg("plain");
+  if (!body.length()) { doc.to<JsonObject>(); return true; }
+  return !deserializeJson(doc, body) && doc.is<JsonObject>();
+}
 }
 
 void noteWebActivity() {
@@ -173,7 +186,7 @@ void registerWeb() {
     }
     const bool visible = doc["visible"].as<bool>();
     if (visible != setupVisible || (!visible && setupRequired)) {
-      if (otaStarted || restartAt || rfLink.busy()) { errorReply(409,"Wait for the update or radio handshake to finish"); return; }
+      if (otaStarted || restartAt || doorbells.busy()) { errorReply(409,"Wait for the update or radio handshake to finish"); return; }
       Preferences prefs;
       radio.pause();
       const bool opened = prefs.begin("webui", false);
@@ -189,7 +202,7 @@ void registerWeb() {
   });
   server.on("/api/status", HTTP_GET, []() {
     if (!authenticated()) return;
-    StaticJsonDocument<3072> doc;
+    DynamicJsonDocument doc(4096);
     doc["csrf"]=csrf; doc["uptime_ms"]=millis(); doc["wifi_connected"]=WiFi.status()==WL_CONNECTED;
     doc["ssid"]=WiFi.SSID(); doc["ip"]=WiFi.status()==WL_CONNECTED?WiFi.localIP().toString():WiFi.softAPIP().toString();
     doc["ap_active"]=apActive; doc["ap_name"]=apName; doc["wifi_mode"]=chime::WifiModeNames[uint8_t(wifiMode)];
@@ -203,8 +216,26 @@ void registerWeb() {
       sweepCombo!=UINT32_MAX?(lastTxInverted?"inverted":"normal"):"normal";
     if (sweepCombo!=UINT32_MAX) doc["sweep_step"]=sweepCombo+1; else doc["sweep_step"]=nullptr;
     doc["sweep_steps"]=22;
-    doc["pairing"]=rfLink.state(); doc["profile"]=settings.profile;
-    doc["paired"]=settings.paired; doc["joined"]=rfLink.profileReady();
+    // pairing: progress of the latest pairing slot; link: overall state.
+    const size_t pairSlot=doorbells.pairSlot(); const chime::Link &pairLink=doorbells.link(pairSlot);
+    doc["pairing"]=pairLink.state(); doc["link"]=linkState(); doc["profile"]=doorbells.count()>0;
+    doc["paired"]=doorbellsPaired(); doc["joined"]=doorbellsJoined();
+    doc["pair_slot"]=pairSlot; doc["pair_joined"]=pairLink.profileReady() && !pairLink.busy();
+    doc["pair_doorbell_id"]=hex32(pairLink.profile().source); doc["max_doorbells"]=chime::MaxDoorbells;
+    JsonArray bells=doc.createNestedArray("doorbells");
+    for (size_t i=0;i<doorbells.count();++i) {
+      const chime::Link &link=doorbells.link(i); const auto &p=link.profile();
+      JsonObject b=bells.createNestedObject();
+      b["id"]=hex32(p.source); b["name"]=doorbells.name(i); b["display_name"]=doorbellName(i);
+      b["paired"]=p.paired; b["joined"]=link.profileReady(); b["state"]=link.state();
+      if (link.profileReady()) b["session"]=hex16(p.pair); else b["session"]=nullptr;
+      uint32_t at; float rssi;
+      if (doorbellSeen(p.source,at,rssi)) { b["last_frame_ms"]=at; b["rssi_dbm"]=roundf(rssi*10)/10; }
+      else { b["last_frame_ms"]=nullptr; b["rssi_dbm"]=nullptr; }
+      int8_t trim;
+      if (trimSet.estimate(p.source,trim)) b["trim"]=trim; else b["trim"]=nullptr;
+    }
+    doc["trim_spread"]=trimSet.spread();
     doc["setup_visible"]=setupVisible;
     doc["setup_required"]=setupRequired;
     doc["node_id"]=hex32(settings.nodeId);
@@ -247,9 +278,9 @@ void registerWeb() {
     if (deserializeJson(doc,server.arg("plain")) || !doc.is<JsonObject>()) {
       errorReply(400,"Expected a JSON object"); return;
     }
-    // Forgetting the doorbell ends any pairing or rejoin attempt with it.
-    if (rfLink.busy() && doc["clear_profile"]==true) { rfLink.cancel(millis()); logf("[link] cancelled to forget doorbell\n"); }
-    if (rfLink.busy()) { errorReply(409,"Cancel pairing/join before changing settings"); return; }
+    // Forgetting the doorbells ends any pairing or rejoin attempt with them.
+    if (doorbells.busy() && doc["clear_profile"]==true) { doorbells.cancel(millis()); logf("[link] cancelled to forget doorbells\n"); }
+    if (doorbells.busy()) { errorReply(409,"Cancel pairing/join before changing settings"); return; }
     Settings next = settings;
     if (!updateSettings(doc.as<JsonObjectConst>(),next) || !booleanField(doc.as<JsonObjectConst>(),"auto_trim") ||
         (doc.containsKey("rx_mode") && !(doc["rx_mode"].is<int>() && (doc["rx_mode"]==0 || doc["rx_mode"]==1)))) {
@@ -261,13 +292,18 @@ void registerWeb() {
     if (doc.containsKey("auto_trim")) nextOptions.autoTrim = doc["auto_trim"].as<bool>();
     if (doc.containsKey("rx_mode")) nextOptions.rxMode = doc["rx_mode"]==1 ? RxMode::Esp32 : RxMode::PacketEngine;
     if ((nextOptions.autoTrim && !radioOptions.autoTrim) || next.radio.hz != settings.radio.hz) nextOptions.calibrated = false;
+    const bool freshTrim = radioOptions.calibrated && !nextOptions.calibrated;
+    const bool forgetAll = doc["clear_profile"]==true;
     radio.pause(); storageOk=saveSettings(next);
+    // clear_profile forgets every doorbell; a new measurement drops each doorbell's trim.
+    if (storageOk && forgetAll) storageOk=clearAdditionalDoorbells();
+    if (storageOk && freshTrim) storageOk=clearDoorbellTrims();
     if (storageOk && (nextOptions.autoTrim != radioOptions.autoTrim || nextOptions.calibrated != radioOptions.calibrated ||
         nextOptions.rxMode != radioOptions.rxMode))
       storageOk=saveRadioOptions(nextOptions);
     if (!storageOk) { restartRadio(); errorReply(500,"NVS write failed; settings were not applied"); return; }
-    radioOptions=nextOptions; resetAfc();
-    const bool linkChanged = next.paired != settings.paired || next.source != settings.source ||
+    radioOptions=nextOptions; resetAfc(freshTrim);
+    const bool linkChanged = forgetAll || next.paired != settings.paired || next.source != settings.source ||
       next.destination != settings.destination || next.pair != settings.pair ||
       memcmp(next.key, settings.key, sizeof(next.key)) != 0 ||
       next.radio.hz != settings.radio.hz || next.radio.trim != settings.radio.trim;
@@ -279,8 +315,9 @@ void registerWeb() {
     if (!authenticated()) return;
     StaticJsonDocument<512> doc;
     doc["name"]=chimeApp.name; doc["volume"]=chimeApp.volume; doc["led"]=chimeApp.led;
-    doc["joined"]=rfLink.profileReady(); doc["doorbell_id"]=hex32(settings.source);
-    doc["node_id"]=hex32(settings.nodeId); doc["session"]=hex16(rfLink.profile().pair);
+    // First doorbell; GET /api/status lists all of them.
+    doc["joined"]=doorbells.count() && doorbells.link(0).profileReady(); doc["doorbell_id"]=hex32(settings.source);
+    doc["node_id"]=hex32(settings.nodeId); doc["session"]=hex16(doorbells.link(0).profile().pair);
     doc["requests"]=appRequests; doc["last_opcode"]=lastAppOpcode;
     if (appRequests) doc["last_request_ms"]=lastAppAt; else doc["last_request_ms"]=nullptr;
     doc["uptime_ms"]=millis();
@@ -391,7 +428,7 @@ void registerWeb() {
   // apply only on Finish; playback is inhibited during the live change.
   const auto setupSound = [](bool save) {
     if (!mutationAuthorized()) return;
-    if (otaStarted || restartAt || (save && rfLink.busy())) { errorReply(409,"Wait for the update or radio handshake to finish"); return; }
+    if (otaStarted || restartAt || (save && doorbells.busy())) { errorReply(409,"Wait for the update or radio handshake to finish"); return; }
     StaticJsonDocument<768> doc;
     if (deserializeJson(doc,server.arg("plain")) || !doc.is<JsonObject>()) { errorReply(400,"Expected a JSON object"); return; }
     PinMap savedPins; loadPins(savedPins);
@@ -445,7 +482,7 @@ void registerWeb() {
   // Validates (and with /api/pins saves) a GPIO map; issues explain each finding.
   const auto pinRequest = [](bool save) {
     if (!mutationAuthorized()) return;
-    if (save && (otaStarted || restartAt || rfLink.busy())) { errorReply(409,"Wait for the update or radio handshake to finish"); return; }
+    if (save && (otaStarted || restartAt || doorbells.busy())) { errorReply(409,"Wait for the update or radio handshake to finish"); return; }
     StaticJsonDocument<512> doc;
     if (deserializeJson(doc,server.arg("plain")) || !doc.is<JsonObject>()) { errorReply(400,"Expected a JSON object"); return; }
     PinMap next=pins;
@@ -487,7 +524,7 @@ void registerWeb() {
   server.on("/api/pins", HTTP_POST, [pinRequest]() { pinRequest(true); });
   server.on("/api/pins/reset", HTTP_POST, []() {
     if (!mutationAuthorized()) return;
-    if (otaStarted || restartAt || rfLink.busy()) { errorReply(409,"Wait for the update or radio handshake to finish"); return; }
+    if (otaStarted || restartAt || doorbells.busy()) { errorReply(409,"Wait for the update or radio handshake to finish"); return; }
     radio.pause(); const bool saved=savePins(PinMap{}); restartRadio();
     if (!saved) { errorReply(500,"Could not save GPIO settings"); return; }
     applyPinsLive(PinMap{});
@@ -555,22 +592,72 @@ void registerWeb() {
     logf("WiFi: connecting to %s\n", settings.ssid);
     messageReply("Connecting");
   });
+  // {} pairs the first doorbell (replacing it), {"doorbell_id"} replaces that
+  // one and {"add":true} pairs an additional doorbell (experimental).
   server.on("/api/pair/start", HTTP_POST, []() {
     if (!mutationAuthorized()) return;
+    StaticJsonDocument<128> doc;
+    if (!optionalBody(doc) || !booleanField(doc.as<JsonObjectConst>(),"add")) { errorReply(400,"Expected {}, {add: true} or {doorbell_id}"); return; }
+    size_t slot=0;
+    if (doc["add"]==true) {
+      if (!doorbells.count()) { errorReply(409,"Pair the first doorbell first"); return; }
+      if (doorbells.count()>=chime::MaxDoorbells) { errorReply(409,"All doorbell slots are in use; forget one first"); return; }
+      slot=doorbells.count();
+    } else if (doc.containsKey("doorbell_id")) {
+      const int found=doorbellSlot(doc.as<JsonObjectConst>());
+      if (found<0) { errorReply(404,"Unknown doorbell"); return; }
+      slot=size_t(found);
+    }
     if (!storageOk) { errorReply(503,"Settings storage unavailable; pairing needs persistent credentials"); return; }
-    if (!startPairing()) { errorReply(409,"Pairing busy or radio unavailable"); return; }
+    if (!startPairing(slot)) { errorReply(409,"Pairing busy or radio unavailable"); return; }
     messageReply("Pairing started for 5 minutes");
   });
   server.on("/api/pair/cancel", HTTP_POST, []() {
     if (!mutationAuthorized()) return;
-    rfLink.cancel(millis()); messageReply("Pairing/join attempt cancelled");
+    doorbells.cancel(millis()); messageReply("Pairing/join attempt cancelled");
   });
+  // {} rejoins every paired doorbell, {"doorbell_id"} one of them.
   server.on("/api/join/start", HTTP_POST, []() {
     if (!mutationAuthorized()) return;
-    if (!radio.healthy || otaStarted || restartAt || !rfLink.startJoin(millis())) {
-      errorReply(409,"No saved pairing, link busy, or radio unavailable"); return;
+    StaticJsonDocument<128> doc;
+    if (!optionalBody(doc)) { errorReply(400,"Expected {} or {doorbell_id}"); return; }
+    if (!radio.healthy || otaStarted || restartAt) { errorReply(409,"No saved pairing, link busy, or radio unavailable"); return; }
+    if (doc.containsKey("doorbell_id")) {
+      const int slot=doorbellSlot(doc.as<JsonObjectConst>());
+      if (slot<0) { errorReply(404,"Unknown doorbell"); return; }
+      if (!doorbells.startJoin(size_t(slot),millis())) { errorReply(409,"Doorbell not paired or link busy"); return; }
+      duplicates.forget(doorbells.link(slot).profile().source);
+    } else {
+      if (!doorbells.startJoinAll(millis())) { errorReply(409,"No saved pairing, link busy, or radio unavailable"); return; }
+      duplicates.reset();
     }
-    duplicates.reset(); messageReply("Rejoin started");
+    messageReply("Rejoin started");
+  });
+  // {"doorbell_id", "name"}: a local label (up to 24 bytes, empty for "Doorbell N").
+  server.on("/api/doorbells", HTTP_POST, []() {
+    if (!mutationAuthorized()) return;
+    StaticJsonDocument<192> doc;
+    if (deserializeJson(doc,server.arg("plain")) || !doc.is<JsonObject>() || !doc["name"].is<const char *>() ||
+        !stringField(doc.as<JsonObjectConst>(),"name",chime::DoorbellNameSize-1)) {
+      errorReply(400,"Expected {doorbell_id, name} with up to 24 characters"); return;
+    }
+    const char *name=doc["name"];
+    for (const char *c=name; *c; ++c) if (uint8_t(*c)<0x20) { errorReply(400,"Name contains control characters"); return; }
+    const int slot=doorbellSlot(doc.as<JsonObjectConst>());
+    if (slot<0) { errorReply(404,"Unknown doorbell"); return; }
+    if (!renameDoorbell(size_t(slot),name)) { errorReply(500,"Could not save the doorbell name"); return; }
+    messageReply("Doorbell name saved");
+  });
+  // {"doorbell_id"}: forgets one doorbell; later ones move up a slot.
+  server.on("/api/doorbells/forget", HTTP_POST, []() {
+    if (!mutationAuthorized()) return;
+    StaticJsonDocument<128> doc;
+    if (deserializeJson(doc,server.arg("plain")) || !doc.is<JsonObject>()) { errorReply(400,"Expected {doorbell_id}"); return; }
+    const int slot=doorbellSlot(doc.as<JsonObjectConst>());
+    if (slot<0) { errorReply(404,"Unknown doorbell"); return; }
+    if (otaStarted || restartAt || doorbells.pairing()) { errorReply(409,"Cancel pairing first"); return; }
+    if (!forgetDoorbell(size_t(slot))) { errorReply(500,"Could not save; the doorbell was kept"); return; }
+    messageReply("Doorbell forgotten");
   });
   server.on("/api/reboot", HTTP_POST, []() {
     if (!mutationAuthorized()) return;
@@ -595,7 +682,7 @@ void registerWeb() {
       otaStarted=false; otaError="";
       if (!otaAuthorized) return;
       noteWebActivity();
-      rfLink.cancel(millis()); gong.inhibit(true); radio.pause();
+      doorbells.cancel(millis()); gong.inhibit(true); radio.pause();
       if (!upload.filename.endsWith(".bin")) { otaError="Upload a firmware .bin file"; return; }
       otaStarted=Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH); otaStartedAt=millis();
       if (!otaStarted) otaError=String("Could not open OTA partition: ")+Update.errorString();

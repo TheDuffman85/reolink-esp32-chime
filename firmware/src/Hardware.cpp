@@ -251,11 +251,17 @@ bool Radio::beginLocked(const RadioSettings &settings, bool wide, RxMode mode) {
 }
 bool Radio::transmit(const uint8_t *frame, size_t size) {
   lock();
-  const bool sent = transmitLocked(frame, size);
+  const bool sent = transmitLocked(frame, size, trim_);
   unlock();
   return sent;
 }
-bool Radio::transmitLocked(const uint8_t *frame, size_t size) {
+bool Radio::transmit(const uint8_t *frame, size_t size, int8_t trim) {
+  lock();
+  const bool sent = transmitLocked(frame, size, trim);
+  unlock();
+  return sent;
+}
+bool Radio::transmitLocked(const uint8_t *frame, size_t size, int8_t trim) {
   if (!frame || !size || size > MaxTransmitSize) {
     error = "TX frame must contain 1 to 255 on-air bytes";
     return false;
@@ -273,9 +279,11 @@ bool Radio::transmitLocked(const uint8_t *frame, size_t size) {
     // The complete software-generated waveform goes in FIFO.
     // PATABLE[0] per band (Band.h): about +11 dBm at 868 MHz, 0 dBm at
     // 902-928 MHz; FREND0.PA_POWER=0.
+    // FSCTRL0 takes effect with the IDLE -> TX calibration (MCSM0 FS_AUTOCAL).
     if (!write(0x00, 0x2E) || !write(0x02, 0x2E) || !write(0x12, 0x10) ||
         !write(0x06, uint8_t(size)) || !write(0x08, 0x00) ||
-        !write(0x17, 0x00) || !write(0x3E, paTable_)) return false;
+        !write(0x17, 0x00) || !write(0x3E, paTable_) ||
+        (trim != trim_ && !write(0x0C, uint8_t(trim)))) return false;
     size_t written = size < 64 ? size : 64;
     if (!writeFifo(frame, written)) return false;
     if (!strobe(0x35)) return false; // STX; TXOFF_MODE returns to IDLE.
@@ -311,7 +319,8 @@ bool Radio::transmitLocked(const uint8_t *frame, size_t size) {
   bool restored = strobe(0x36) && waitForState(0x01, 100);
   if (restored) restored = strobe(0x3B);
   const uint8_t rxRegisters[][2] = {
-    {0x00, iocfg2_}, {0x02, iocfg0_}, {0x06, 0xFF}, {0x08, pktctrl0_}, {0x12, mdmcfg2_}, {0x17, 0x0C}
+    {0x00, iocfg2_}, {0x02, iocfg0_}, {0x06, 0xFF}, {0x08, pktctrl0_}, {0x12, mdmcfg2_}, {0x17, 0x0C},
+    {0x0C, uint8_t(trim_)}
   };
   for (const auto &reg : rxRegisters) restored = write(reg[0], reg[1]) && restored;
   if (restored) restored = enterRx();

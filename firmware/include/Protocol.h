@@ -61,6 +61,8 @@ class Duplicates {
  public:
   bool seen(const Ring &ring, uint32_t now);
   void reset();
+  // After one doorbell rejoins; other doorbells keep their history.
+  void forget(uint32_t source);
  private:
   struct Entry { uint32_t source = 0, sequence = 0, time = 0;
                  uint16_t pair = 0; bool used = false; } entries_[32];

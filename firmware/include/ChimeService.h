@@ -57,6 +57,8 @@ void ringJson(const chime::RingEvent &e, JsonObject o, bool labels);
 // tone volume in `request` is already scaled; appVolume is the 0..4 chime
 // volume. An extra relay pulse is kept even at zero audio level.
 // The owner's mute silences doorbell rings and MQTT plays (unless forced);
-// local tests still play so the sound can be checked.
+// local tests still play so the sound can be checked. doorbell: the ringing
+// doorbell's ID.
 chime::RingOutcome playChime(chime::RingSource source, const GongRequest &request, uint8_t appVolume,
-                             uint8_t flags = 0, uint16_t tone = 0, int8_t rssi = 0, bool force = false);
+                             uint8_t flags = 0, uint16_t tone = 0, int8_t rssi = 0, bool force = false,
+                             uint32_t doorbell = 0);

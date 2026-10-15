@@ -218,10 +218,18 @@ void ringJson(const chime::RingEvent &e, JsonObject o, bool labels) {
     if (labels) o["audio_output"] = chime::AudioOutputNames[output]; else o["audio_output"] = output;
   }
   o["volume"] = e.volume; o["audio_level"] = e.level; o["preview"] = bool(e.flags & chime::RingPreview);
-  if (e.source == uint8_t(chime::RingSource::Doorbell)) { o["tone"] = e.tone; o["rssi_dbm"] = e.rssi; }
+  if (e.source == uint8_t(chime::RingSource::Doorbell)) {
+    o["tone"] = e.tone; o["rssi_dbm"] = e.rssi;
+    // Unknown (0) in entries from before multiple doorbells were supported.
+    if (e.doorbell) o["doorbell"] = hex32(e.doorbell); else o["doorbell"] = nullptr;
+    if (labels) {
+      const String name = doorbellNameFor(e.doorbell);
+      if (name.length()) o["doorbell_name"] = name; else o["doorbell_name"] = nullptr;
+    }
+  }
 }
 chime::RingOutcome playChime(chime::RingSource source, const GongRequest &request, uint8_t appVolume,
-                             uint8_t flags, uint16_t tone, int8_t rssi, bool force) {
+                             uint8_t flags, uint16_t tone, int8_t rssi, bool force, uint32_t doorbell) {
   chime::RingOutcome outcome;
   const bool mutable_ = source == chime::RingSource::Doorbell || source == chime::RingSource::Mqtt;
   if (mutable_ && !force && chimeMuted()) outcome = chime::RingOutcome::ChimeMuted;
@@ -233,7 +241,7 @@ chime::RingOutcome playChime(chime::RingSource source, const GongRequest &reques
   event.epoch = epochNow(); event.ms = millis(); event.tone = tone; event.rssi = rssi; event.flags = flags;
   event.source = uint8_t(source); event.outcome = uint8_t(outcome); event.type = uint8_t(request.type);
   event.sound = request.type == GongType::Relay ? request.pattern : request.tone.melody;
-  event.volume = appVolume; event.level = request.tone.volume;
+  event.volume = appVolume; event.level = request.tone.volume; event.doorbell = doorbell;
   const chime::RingEvent &stored = ringLog.add(event);
   ringLogDirty = true; ringLogChangedAt = millis();
   logf("[ring] #%u %s: %s\n", stored.id, chime::RingSourceNames[stored.source], chime::RingOutcomeNames[stored.outcome]);
@@ -253,5 +261,5 @@ void clearRingLog() {
 }
 void serviceRingLog() {
   if (ringLogDirty && uint32_t(millis()-ringLogChangedAt)>3000 && uint32_t(millis()-lastPacketAt)>3000 &&
-      !gong.active() && !otaStarted && !rfLink.busy()) saveRingLog();
+      !gong.active() && !otaStarted && !doorbells.busy()) saveRingLog();
 }

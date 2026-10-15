@@ -62,6 +62,8 @@ alternatives, as explained in the [original firmware audit](vendor-sounds.md).
 | `images/ui-settings-wifi-ap-desktop.png`, `images/ui-settings-wifi-ap-mobile.png` | Access point mode: hotspot settings, client connection hidden |
 | `images/ui-settings-wifi-off-desktop.png`, `images/ui-settings-wifi-off-mobile.png` | Off mode: recovery instructions, client connection hidden |
 | `images/ui-settings-pair-desktop.png`, `images/ui-settings-pair-mobile.png` | Full pairing controls directly in Settings with Setup hidden |
+| `images/ui-settings-doorbells-desktop.png`, `images/ui-settings-doorbells-mobile.png` | Two doorbells (experimental): per-doorbell cards, labels and the add card |
+| `images/ui-settings-add-doorbell-desktop.png` | Pairing an additional doorbell from Settings |
 | `images/web-settings.png` | Settings: section list and General |
 | `images/web-settings-ha.png` | Settings: MQTT (Home Assistant) |
 | `images/web-settings-security.png` | Settings: Sign-in and sessions |

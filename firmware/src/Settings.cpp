@@ -73,6 +73,22 @@ bool loadSettings(Settings &settings) {
   password.toCharArray(settings.adminPassword, sizeof(settings.adminPassword));
   return saveSettings(settings);
 }
+void loadDoorbellStore(DoorbellStore &store) {
+  store = DoorbellStore{};
+  Preferences prefs;
+  if (!prefs.begin("doorbells", true)) return;
+  DoorbellStore candidate;
+  if (prefs.getBytesLength("store") == sizeof(candidate) &&
+      prefs.getBytes("store", &candidate, sizeof(candidate)) == sizeof(candidate) &&
+      candidate.version == 1 && candidate.count < chime::MaxDoorbells) store = candidate;
+  prefs.end();
+}
+bool saveDoorbellStore(const DoorbellStore &store) {
+  Preferences prefs;
+  if (!prefs.begin("doorbells", false)) return false;
+  const bool ok = prefs.putBytes("store", &store, sizeof(store)) == sizeof(store);
+  prefs.end(); return ok;
+}
 bool loadRadioOptions(RadioOptions &options) {
   options = RadioOptions{};
   Preferences prefs;

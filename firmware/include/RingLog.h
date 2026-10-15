@@ -28,13 +28,15 @@ struct RingEvent {
   uint8_t level = 0;           // Audio level 0..100.
   int8_t rssi = 0;             // Doorbell frames only, dBm.
   uint8_t flags = 0;
+  uint32_t doorbell = 0;       // Doorbell ID; 0 for other sources and version-1 images.
 };
 
 // Fixed-size history, newest first. Its compact image survives restarts in NVS.
 class RingLog {
  public:
   static constexpr size_t Capacity = 50;
-  static constexpr size_t EntrySize = 22, HeaderSize = 8;
+  // Version 2 entries append the doorbell ID; version-1 images still restore.
+  static constexpr size_t EntrySize = 26, LegacyEntrySize = 22, HeaderSize = 8;
   static constexpr size_t ImageSize = HeaderSize + Capacity * EntrySize;
   // Assigns the next ID and returns the stored copy.
   const RingEvent &add(RingEvent event);

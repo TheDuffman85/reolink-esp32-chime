@@ -326,12 +326,35 @@ the explicitly written fields. The replacement does not implement every frame
 type or vendor feature; broadcast timing negotiation and vendor RF firmware
 distribution are outside its supported feature set.
 
+## Several doorbells (experimental)
+
+Nothing in the frames is specific to one doorbell: every encrypted frame
+carries both the chime and the doorbell ID, and each doorbell issues its own key
+and session. The replacement therefore keeps an independent link (pairing key,
+session, sequence, heartbeat, retries and rejoin) per doorbell, up to four, all
+under one chime ID. Received frames are matched by their IDs and session; one
+radio transmits the links' frames in turn. Pairing an additional doorbell runs
+the normal discovery/key/join exchange while the other links stay joined. A
+pairing response from a doorbell that is already paired is not acknowledged:
+that pairing attempt fails and the doorbell keeps its existing key. Duplicate suppression is keyed by
+doorbell ID, so rejoining one doorbell does not affect another's history.
+
+Each doorbell's crystal differs slightly. Automatic trim keeps one estimate per
+doorbell (median of its own frames) and receives at the midpoint of the
+estimates, so the two furthest apart are each off by half their spread; each
+transmission uses the addressed doorbell's own estimate in FSCTRL0 for that
+frame. More than 16 steps of spread keeps the 162.5 kHz receive filter.
+This behaviour is untested with real doorbells; whether a doorbell objects to
+its chime also being paired elsewhere is unknown, but doorbells do not
+exchange chime lists over this RF link.
+
 ## Implementation map
 
 | Source | Protocol role |
 |---|---|
 | [Protocol.cpp](firmware/src/Protocol.cpp) | PN9, CRC, envelope, ring parsing and duplicate cache |
 | [Link.cpp](firmware/src/Link.cpp) | Pairing, join, heartbeat, retry and addressing state machine |
+| [Doorbells.cpp](firmware/src/Doorbells.cpp) | One link per doorbell: frame routing, transmit turns, slots |
 | [AppProtocol.cpp](firmware/src/AppProtocol.cpp) | Name/volume/LED/config/version payloads |
 | [LinkService.cpp](firmware/src/LinkService.cpp) | AES, persistent profiles and ring/app dispatch |
 | [Hardware.cpp](firmware/src/Hardware.cpp) | CC1101 registers, SPI reception and TX |

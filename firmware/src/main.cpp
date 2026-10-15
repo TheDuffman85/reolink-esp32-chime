@@ -56,7 +56,7 @@ void serialDiagnostics() {
   if (now > -85 && uint32_t(millis() - spikeAt) > 200) {
     spikeAt = millis(); logf("[rssi] spike %.1f dBm\n", now);
   }
-  const String state = rfLink.state();
+  const String state = linkState();
   if (state != lastState) { logf("[link] %s\n", state.c_str()); lastState = state; }
   if (transmitted != lastTx || transmitErrors != lastTxErr) {
     logf("[tx] ok=%u err=%u %s trim=%d (%+.1f kHz) %s\n", transmitted, transmitErrors,
@@ -66,7 +66,7 @@ void serialDiagnostics() {
   while (Serial.available()) {
     const char c = Serial.read();
     if (c == 'p') logf("%s\n", startPairing() ? "[cmd] pairing started" : "[cmd] pairing refused");
-    else if (c == 'c') { rfLink.cancel(millis()); logf("[cmd] cancelled\n"); }
+    else if (c == 'c') { doorbells.cancel(millis()); logf("[cmd] cancelled\n"); }
     else if (c == 'g') playChime(chime::RingSource::Serial, gongRequest(4), 4);
     else if (c == 'a' && signInOff()) logf("[cmd] web sign-in turned off\n"); // Physical access.
     else if (c == 'w') recoverWifi(false);
@@ -74,10 +74,10 @@ void serialDiagnostics() {
   if (uint32_t(millis() - lastAt) < 5000) return;
   lastAt = millis();
   logf("[diag] radio=%s part=%u ver=%u marc=0x%02X rssi=%.1f peak=%.1f raw=%u/5s "
-    "pkts=%u ti=%u ccitt=%u bad=%u badlen=%u falsesync=%u drop=%u link=%s paired=%d tx=%u/%u wifi=%d %s\n",
+    "pkts=%u ti=%u ccitt=%u bad=%u badlen=%u falsesync=%u drop=%u link=%s doorbells=%u tx=%u/%u wifi=%d %s\n",
     radio.healthy ? "ok" : "FAIL", radio.part, radio.version, radio.state(), now, peak,
     rawBytes - lastRaw, packetCount, crcTi, crcCcitt, crcBad, unsigned(Radio::invalidLengths + decoder.invalidLengths),
-    unsigned(Radio::falseSyncs), unsigned(Radio::dropped), state.c_str(), settings.paired, transmitted, transmitErrors,
+    unsigned(Radio::falseSyncs), unsigned(Radio::dropped), state.c_str(), unsigned(doorbells.count()), transmitted, transmitErrors,
     WiFi.status() == WL_CONNECTED, radio.lastError().c_str());
   lastRaw = rawBytes; peak = -127;
 }
@@ -169,7 +169,7 @@ void setup() {
   restartRadio();
   if (wifiMode != chime::WifiMode::Off) registerWeb(); // The web server needs the network stack.
   // Web preference migration can pause RF for NVS writes; join afterwards.
-  if (settings.paired && radio.healthy) rfLink.startJoin(millis());
+  if (radio.healthy) doorbells.startJoinAll(millis());
 }
 
 void loop() {

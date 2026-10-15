@@ -78,7 +78,7 @@ void ringLogTests() {
   for (int i = 0; i < 60; ++i) {
     RingEvent e; e.ms = uint32_t(i * 1000); e.tone = uint16_t(i % 11);
     e.source = uint8_t(i % RingSources); e.outcome = uint8_t(i % RingOutcomes); // includes chime_muted
-    e.rssi = int8_t(-60 - i % 5); e.level = 35; e.volume = 4;
+    e.rssi = int8_t(-60 - i % 5); e.level = 35; e.volume = 4; e.doorbell = 0x11223344u + uint32_t(i % 2);
     const RingEvent &stored = log.add(e);
     assert(stored.id == uint32_t(i + 1));
   }
@@ -94,7 +94,8 @@ void ringLogTests() {
   for (size_t i = 0; i < copy.size(); ++i) {
     const RingEvent &x = copy.newest(i), &y = log.newest(i);
     assert(x.id == y.id && x.ms == y.ms && x.tone == y.tone && x.source == y.source &&
-           x.outcome == y.outcome && x.rssi == y.rssi && x.level == 35 && x.volume == 4);
+           x.outcome == y.outcome && x.rssi == y.rssi && x.level == 35 && x.volume == 4 &&
+           x.doorbell == y.doorbell);
     assert(x.flags & RingPreviousBoot);
   }
   RingEvent next; next.source = 1;
@@ -103,7 +104,8 @@ void ringLogTests() {
   // Invalid images leave the log untouched.
   RingLog small; small.add(RingEvent{});
   assert(!small.restore(image, length - 1));
-  image[2] = 2; assert(!small.restore(image, length)); image[2] = 1;
+  image[2] = 3; assert(!small.restore(image, length));
+  image[2] = 1; assert(!small.restore(image, length)); image[2] = 2; // Version 1 has shorter entries
   image[RingLog::HeaderSize + 14] = RingSources; assert(!small.restore(image, length));
   assert(small.size() == 1 && small.lastId() == 1);
   // Partial log and clear.
@@ -113,6 +115,17 @@ void ringLogTests() {
   RingLog restored; assert(restored.restore(image, partLength) && restored.size() == 2 && restored.newest(0).id == 2);
   restored.add(RingEvent{}); assert(restored.newest(0).id == 3 && restored.newest(2).id == 1);
   restored.clear(); assert(restored.size() == 0 && restored.add(RingEvent{}).id == 4);
+  // Version-1 images (22-byte entries, before multiple doorbells) restore
+  // with an unknown doorbell.
+  uint8_t legacy[RingLog::HeaderSize + 2 * RingLog::LegacyEntrySize]{};
+  legacy[0] = 'R'; legacy[1] = 'L'; legacy[2] = 1; legacy[3] = 2; write32le(legacy + 4, 7);
+  for (size_t i = 0; i < 2; ++i) {
+    uint8_t *e = legacy + RingLog::HeaderSize + i * RingLog::LegacyEntrySize;
+    write32le(e, uint32_t(6 + i)); e[12] = uint8_t(3 + i); e[20] = uint8_t(-70);
+  }
+  RingLog old; assert(old.restore(legacy, sizeof(legacy)) && old.size() == 2 && old.lastId() == 7);
+  assert(old.newest(0).id == 7 && old.newest(0).tone == 4 && old.newest(0).doorbell == 0 && old.newest(1).rssi == -70);
+  assert(!old.restore(legacy, sizeof(legacy) - 1));
 }
 
 bool same(const ChimeState &a, const ChimeState &b) {

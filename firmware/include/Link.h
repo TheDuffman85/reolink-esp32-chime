@@ -19,6 +19,8 @@ class Link {
   bool startPair(uint32_t now);
   bool startJoin(uint32_t now);
   void cancel(uint32_t now);
+  // Ends a pairing attempt with this reason as its state; no effect otherwise.
+  void abortPairing(const char *reason) { if (pairing_) fail(reason); }
   void tick(uint32_t now);
   // Queues an encrypted type-3 application frame (e.g. a reply to a doorbell
   // request). Returns false while another frame is pending or not joined.
@@ -29,6 +31,9 @@ class Link {
   }
   void consume(bool success, uint32_t now);
   const LinkProfile &profile() const { return profile_; }
+  // Doorbell this link talks to: the candidate during pairing/join (0 until
+  // a pairing response names it), otherwise the saved profile's doorbell.
+  uint32_t peer() const { return busy() ? candidate_.source : profile_.source; }
   bool profileDirty() const { return dirty_; }
   void clearProfileDirty() { dirty_ = false; }
   bool profileReady() const { return state_ == State::Joined; }

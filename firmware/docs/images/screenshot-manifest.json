@@ -1,5 +1,5 @@
 {
-  "firmware_version": "1.0.32",
+  "firmware_version": "1.0.33",
   "readme_screenshots": {
     "home": "readme-home.png",
     "mobile": "readme-mobile.png",
@@ -21,7 +21,7 @@
     "debug": "readme-debug.png",
     "update": "readme-update.png"
   },
-  "embedded_ui_sha256": "668a8804cf981ab4cddd39f1cc3360be775f4b5a585c6cae538f522fd3211364",
+  "embedded_ui_sha256": "31fd2afc45cea2da079f99ffef1b88c6f669361330a1a565cd03d7c7be1b694f",
   "data": "Synthetic API fixtures; no device connection",
   "screenshots": [
     {
@@ -117,7 +117,31 @@
       "tab": "settings",
       "viewport": {
         "width": 390,
-        "height": 1702
+        "height": 2079
+      }
+    },
+    {
+      "file": "ui-settings-doorbells-desktop.png",
+      "tab": "settings",
+      "viewport": {
+        "width": 1100,
+        "height": 1100
+      }
+    },
+    {
+      "file": "ui-settings-doorbells-mobile.png",
+      "tab": "settings",
+      "viewport": {
+        "width": 390,
+        "height": 1513
+      }
+    },
+    {
+      "file": "ui-settings-add-doorbell-desktop.png",
+      "tab": "settings",
+      "viewport": {
+        "width": 1100,
+        "height": 1100
       }
     },
     {
@@ -908,5 +932,6 @@
   "initial_setup_only_until_finish": true,
   "initial_setup_overrides_saved_tabs": true,
   "initial_setup_stays_locked_after_pairing_and_save_failure": true,
+  "additional_doorbells_experimental": true,
   "page_horizontal_overflow": false
 }

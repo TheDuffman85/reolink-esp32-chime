@@ -1,4 +1,5 @@
 #pragma once
+#include "Doorbells.h"
 #include "Hardware.h"
 #include <Preferences.h>
 #include "WifiConfig.h"
@@ -22,6 +23,23 @@ struct Settings {
   uint8_t heartbeatMode = 0;
   uint32_t nodeId = 0;
 };
+// Additional doorbells (experimental) and per-doorbell data, NVS namespace
+// "doorbells". The first doorbell's profile stays in Settings, so older
+// firmware keeps it. names: local labels, empty for "Doorbell N". trim: each
+// doorbell's measured trim (bit i of trimValid), used to transmit to it.
+struct StoredDoorbell { bool paired = false; uint8_t heartbeatMode = 0; uint16_t pair = 0;
+                        uint32_t source = 0, destination = 0; uint8_t key[16]{}; };
+struct DoorbellStore {
+  uint8_t version = 1, count = 0, trimValid = 0, reserved = 0; // count: entries in extra[]
+  StoredDoorbell extra[chime::MaxDoorbells - 1];
+  char names[chime::MaxDoorbells][chime::DoorbellNameSize]{};
+  int8_t trim[chime::MaxDoorbells]{};
+};
+// No padding: stores compare with memcmp.
+static_assert(sizeof(StoredDoorbell) == 28 && sizeof(DoorbellStore) == 192, "DoorbellStore layout");
+// Unreadable or absent: an empty store (the caller validates its contents).
+void loadDoorbellStore(DoorbellStore &store);
+bool saveDoorbellStore(const DoorbellStore &store);
 // Radio options added after Settings' layout was fixed; own NVS namespace.
 // autoTrim: automatic trim (Afc.h). calibrated: a trim was measured; until
 // then packet-engine RX uses the wide bandwidth. rxMode: RxMode, packet

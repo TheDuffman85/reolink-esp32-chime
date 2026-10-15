@@ -82,8 +82,10 @@ Returns a flat status object, plus the nested `mute` object:
 | `rf_frequency_hz`, `rf_trim`, `rssi_dbm` | Effective frequency, active trim and sampled RSSI |
 | `auto_trim`, `trim_calibrated`, `rx_bandwidth_khz`, `rx_mode` | Automatic tuning and receiver mode |
 | `tx_polarity`, `sweep_step`, `sweep_steps`, `learned_polarity` | Polarity/diagnostic tuning fields; inactive step is null |
-| `pairing`, `profile`, `paired`, `joined` | Link state and profile readiness |
-| `node_id`, `doorbell_id`, `identity_compatible`, `chime_name` | Hex identities, signed-ID compatibility and name |
+| `pairing`, `link`, `profile`, `paired`, `joined` | Latest pairing slot's state, overall link state (a pairing/joining link first), any doorbell saved, any doorbell paired, every paired doorbell joined |
+| `pair_slot`, `pair_joined`, `pair_doorbell_id` | Slot of the latest pairing, whether it finished joined, and its doorbell ID |
+| `doorbells`, `max_doorbells`, `trim_spread` | Paired doorbells (below), the slot limit (4) and the spread of their trim estimates |
+| `node_id`, `doorbell_id`, `identity_compatible`, `chime_name` | Hex identities (`doorbell_id` is the first doorbell), signed-ID compatibility and name |
 | `transmitted`, `transmit_errors`, `packets`, `crc_ti`, `crc_bad`, `crc_ccitt` | RF counters since restart |
 | `dropped`, `invalid_lengths`, `false_syncs`, `radio_resets` | Receiver error/reset counters |
 | `rings`, `last_ring_ms`, `ring_seq`, `gong_active`, `gong_ready`, `storage_ok` | Ring counters, last uptime or null, output and storage state |
@@ -97,6 +99,26 @@ IDs are numeric values rendered as eight hexadecimal characters. `pairing`
 can be `idle`, `discovering`, `pair acknowledgement`, `joining`,
 `join acknowledgement`, `joined`, or an error state string. Treat error text
 as diagnostic text rather than a stable enumeration.
+
+Each `doorbells` entry, first doorbell first: `id`, `name` (local label,
+empty if unset), `display_name` (the label or `Doorbell N`), `paired`,
+`joined`, `state` (as `pairing`), `session` (four hex digits or null),
+`last_frame_ms` (uptime of its last valid frame or null), `rssi_dbm` (or null)
+and `trim` (its measured trim estimate or null).
+
+#### Additional doorbells (experimental)
+
+Up to four doorbells can be paired. The first one is paired in Setup or with
+`/api/pair/start {}`; further ones with `{"add": true}`. This is untested with
+real doorbells. A doorbell can be paired only once: answering from a doorbell
+that is already paired ends that attempt with the state `doorbell already
+paired`, and the doorbell keeps its current key. Each doorbell has its own key, session, heartbeat and rejoin
+and rings with the ringtone chosen in its own Reolink app. Name, volume and LED
+are shared: the latest change from any doorbell's app (or this API) applies.
+With automatic trim the receiver uses the midpoint of the doorbells' trim
+estimates and each transmission uses the addressed doorbell's own estimate.
+When the estimates are more than 16 steps (about 25 kHz) apart, or while a new
+doorbell is being added, reception uses the wide 162.5 kHz bandwidth.
 
 ### GET `/api/log?from=<byte-offset>`
 
@@ -140,12 +162,12 @@ GET returns the saved values below plus `wifi_password_set`, `profile`,
 | `source`, `destination` | Strings of 8 hex digits | Doorbell and chime IDs respectively |
 | `pair` | String of 4 hex digits | Session value |
 | `key` | String of 32 hex digits | AES key; empty/missing preserves it |
-| `clear_profile` | Boolean | true removes the saved doorbell profile/key |
+| `clear_profile` | Boolean | true removes every saved doorbell profile/key |
 
 Radio changes restart reception; relevant changes also reinitialize the link.
 Changes during pairing/join return 409; `clear_profile:true` cancels the
 handshake first. A nonempty new key requires full source/destination/pair
-strings in the same request and makes the profile passive. Changing IDs/session
+strings in the same request and makes the first doorbell's profile passive. Changing IDs/session
 also removes paired status. Manual profiles receive only; they cannot join or
 transmit. Numeric hex ID `11223344` has on-air bytes `44 33 22 11`.
 
@@ -156,7 +178,8 @@ Example: `{"frequency_hz":868000000,"auto_trim":true,"rx_mode":0}`.
 ### GET / POST `/api/chime`
 
 GET returns `name`, `volume` (0–4), `led` (0/1), `joined`, `doorbell_id`,
-`node_id`, `session` (four hex digits), `requests`, `last_opcode`,
+`node_id`, `session` (four hex digits; these three describe the first
+doorbell, `/api/status` lists all), `requests`, `last_opcode`,
 `last_request_ms` (null until a request) and `uptime_ms`.
 POST accepts only `name` (1–32 bytes, no control characters), `volume` (0–4)
 and `led` (boolean or supported boolean value). Name/volume/LED persist and
@@ -228,7 +251,8 @@ GET returns `uptime_ms`, `epoch` (UTC seconds/null), `last_id`,
 Entries contain `id`, `source`, `outcome`, numeric `type` and `sound`,
 `ms`, `epoch`, `previous_boot`, `volume`, `audio_level`, `preview`.
 Audio entries also contain numeric `audio_output` (0 PWM, 1 DAC), including
-legacy entries restored from flash. Doorbell entries add `tone` (received ringtone parameter) and `rssi_dbm`.
+legacy entries restored from flash. Doorbell entries add `tone` (received ringtone parameter), `rssi_dbm` and
+`doorbell` (the ringing doorbell's ID; null for entries saved before multiple doorbells were supported).
 
 Sources are `doorbell`, `web`, `button`, `mqtt`, `serial`; outcomes are
 `played`, `muted`, `silent`, `busy`, `chime_muted`. History is saved after a
@@ -370,13 +394,15 @@ sign-in with physical access.
 
 | POST route | Behavior |
 |---|---|
-| `/api/pair/start` | Open five-minute pairing; 409 busy/radio unavailable; 503 unavailable persistent storage |
-| `/api/pair/cancel` | Cancel pair/join without deleting saved credentials |
-| `/api/join/start` | Rejoin saved paired profile; 409 if passive/unpaired, busy or radio unavailable |
+| `/api/pair/start` | Open five-minute pairing. No body or `{}`: first doorbell (replaces it); `{"doorbell_id"}`: replace that doorbell; `{"add":true}`: pair an additional doorbell (experimental). 404 unknown doorbell; 409 busy, radio unavailable, no first doorbell or all slots used; 503 unavailable persistent storage |
+| `/api/pair/cancel` | Cancel pair/join attempts without deleting saved credentials; joined doorbells stay joined |
+| `/api/join/start` | No body or `{}`: rejoin every paired doorbell; `{"doorbell_id"}`: one. 404 unknown; 409 if passive/unpaired, busy or radio unavailable |
+| `/api/doorbells` | `{"doorbell_id","name"}`: local label up to 24 bytes, empty for `Doorbell N` |
+| `/api/doorbells/forget` | `{"doorbell_id"}`: forget one doorbell; later ones move up. 409 while pairing |
 | `/api/reboot` | Reply then schedule restart after about 500 ms |
 | `/api/update` | Multipart app-only firmware upload, then restart |
 
-Commands except update need no body. All require authentication when enabled
+Commands without a listed body need none. All require authentication when enabled
 and the CSRF header. Poll `joined`, `pairing`, `storage_ok` and radio state.
 Canceling/rejoining is distinct from removing a profile with `/api/settings`.
 
@@ -447,12 +473,15 @@ Example retained state:
 
 Status fields: `linked`, `paired`, `radio_ok`, `rings`, `last_ring` (UTC ISO
 string or literal `None`), `muted`, `mute_until` (ISO string or `None`), `ip`,
-`wifi_rssi`, `uptime_s`, `time_synced`, `firmware`.
+`wifi_rssi`, `uptime_s`, `time_synced`, `firmware`, `doorbells` (`id`, `name`
+and `linked` per doorbell). `linked` is true while every paired doorbell has
+a session.
 
 Event fields: `event_type` (`ring` for doorbell, `test` otherwise), `id`,
 `source`, `outcome`, labeled `type`, labeled `sound` (omitted for None),
 `time` (UTC ISO/null), `volume`, `audio_level`, `preview`; doorbell events
-add `tone` and `rssi_dbm`. MQTT uses names for type/sound, while HTTP ring
+add `tone`, `rssi_dbm`, `doorbell` (ID or null) and `doorbell_name` (label,
+`Doorbell N`, or null if no longer paired). MQTT uses names for type/sound, while HTTP ring
 history uses integer indices and includes uptime/previous-boot fields. Audio
 events include `audio_output` (PWM or DAC); it is omitted for Gong/None events.
 
@@ -505,6 +534,8 @@ when `<prefix>/status` is `online`. Entities cover doorbell events, a five-secon
 Ringing indicator, Play button, permanent/timed mute, mute-until time, sound mode/
 audio output, ringtone override, melody/pattern (unavailable while the override
 is off), volume/audio level, LED/extra relay, timings/name and diagnostics.
+The Doorbell link sensor carries a `doorbells` attribute; ring events carry
+`doorbell`/`doorbell_name` attributes for automations per doorbell.
 Disabling discovery publishes empty retained configs to remove entities.
 NTP supplies UTC event/sensor timestamps; RF reception does not depend on MQTT
 or clock synchronization.

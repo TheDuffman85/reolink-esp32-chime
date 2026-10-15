@@ -110,8 +110,10 @@ void announceMqtt() {
   { JsonObject o = entity("last_ring", "Last ring", nullptr, nullptr);
     o["stat_t"] = "~/status"; o["val_tpl"] = "{{ value_json.last_ring }}"; o["dev_cla"] = "timestamp";
     send("sensor", "last_ring"); }
+  // On while every paired doorbell has a session; attributes list each one.
   { JsonObject o = entity("link", "Doorbell link", nullptr, "diagnostic");
     o["stat_t"] = "~/status"; o["val_tpl"] = "{{ 'ON' if value_json.linked else 'OFF' }}"; o["dev_cla"] = "connectivity";
+    o["json_attr_t"] = "~/status"; o["json_attr_tpl"] = "{{ {'doorbells': value_json.doorbells} | tojson }}";
     send("binary_sensor", "link"); }
   { JsonObject o = entity("wifi_rssi", "WiFi signal", nullptr, "diagnostic");
     o["stat_t"] = "~/status"; o["val_tpl"] = "{{ value_json.wifi_rssi }}"; o["dev_cla"] = "signal_strength";
@@ -211,13 +213,19 @@ void serviceMqtt() {
   if (!mqtt.connected() || uint32_t(millis() - checkedAt) < 500) return;
   checkedAt = millis();
   if (integrations.discovery && announcedName != chimeApp.name) announceMqtt(); // Device name follows the chime.
-  StaticJsonDocument<512> doc;
+  StaticJsonDocument<1024> doc;
   chime::writeChime(currentChime(), doc.to<JsonObject>());
   String state; serializeJson(doc, state);
   if (state != lastMqttState && mqtt.publish(mqttBase + "/state", state, true)) lastMqttState = state;
   // Status: whenever a meaningful field changes, otherwise once a minute.
   doc.clear();
-  doc["linked"] = rfLink.profileReady(); doc["paired"] = settings.paired; doc["radio_ok"] = radio.healthy;
+  doc["linked"] = doorbellsJoined(); doc["paired"] = doorbellsPaired(); doc["radio_ok"] = radio.healthy;
+  JsonArray bells = doc.createNestedArray("doorbells");
+  for (size_t i = 0; i < doorbells.count(); ++i) {
+    JsonObject b = bells.createNestedObject();
+    b["id"] = hex32(doorbells.link(i).profile().source); b["name"] = doorbellName(i);
+    b["linked"] = doorbells.link(i).profileReady();
+  }
   doc["rings"] = rings;
   uint32_t lastEpoch = 0;
   for (size_t i = 0; i < ringLog.size(); ++i)

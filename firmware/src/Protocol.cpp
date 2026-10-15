@@ -123,4 +123,7 @@ bool Duplicates::seen(const Ring &ring, uint32_t now) {
   return false;
 }
 void Duplicates::reset() { for (auto &entry : entries_) entry = Entry{}; next_ = 0; }
+void Duplicates::forget(uint32_t source) {
+  for (auto &entry : entries_) if (entry.source == source) entry = Entry{};
+}
 }
