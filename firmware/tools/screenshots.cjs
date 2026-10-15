@@ -367,7 +367,7 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     assert.equal(await page.locator('#cfgBellTitle').textContent(),'Front door');
     assert.equal(await page.locator('#cfgBellNameRow').isVisible(),true);
     assert.equal(await page.locator('#cfgAddCard').isVisible(),true);
-    assert.equal(await page.locator('#cfgUnpair').textContent(),'Forget all doorbells');
+    assert.equal(await page.locator('#cfgBellForget').isVisible(),true);
     assert.match(await page.locator('#cfgBells .card').textContent(),/Back door.*Experimental.*55667788/);
     assert.equal(await page.locator('#sumDoorbell').textContent(),'Linked · 2 doorbells');
     // Typing a name survives polling, which keeps the card.
@@ -403,7 +403,8 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     extraDoorbells=[];firstDoorbellName='';
     await page.evaluate(async()=>{await refresh()});
     assert.equal(await page.locator('#cfgBells .card').count(),0);
-    assert.equal(await page.locator('#cfgUnpair').textContent(),'Forget doorbell');
+    // A single doorbell is forgotten from its own card too.
+    assert.equal(await page.locator('#cfgBellForget').isVisible(),true);
     // Configured devices offer no way back into Setup.
     assert.deepEqual(await page.locator('#nav button:visible').evaluateAll(buttons=>buttons.map(b=>b.dataset.tab)),['home','sound','settings']);
     assert.equal((await page.locator('#sec-general').textContent()).includes('Setup'),false);

@@ -2,6 +2,12 @@
 
 Changes to the ESP32 firmware, listed per version from [`firmware/version.json`](firmware/version.json).
 
+## 1.0.35 - 2026-10-15
+
+### Changed
+
+- **Settings → Doorbell**: a doorbell is forgotten with the **Forget** button on its own card, also when only one doorbell is paired. The separate "Forget doorbell" / "Forget all doorbells" card is gone; `clear_profile` in `POST /api/settings` still removes every doorbell.
+
 ## 1.0.34 - 2026-10-15
 
 ### Added
