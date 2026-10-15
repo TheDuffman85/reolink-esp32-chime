@@ -117,7 +117,7 @@ void ringLogTests() {
 
 bool same(const ChimeState &a, const ChimeState &b) {
   return a.type == b.type && a.audioOutput == b.audioOutput && a.melody == b.melody && a.level == b.level && a.volume == b.volume &&
-    a.pattern == b.pattern && a.led == b.led && a.extraRelay == b.extraRelay &&
+    a.pattern == b.pattern && a.led == b.led && a.extraRelay == b.extraRelay && a.overrideRingtone == b.overrideRingtone &&
     a.extraRelayMs == b.extraRelayMs && a.pulseMs == b.pulseMs && a.gapMs == b.gapMs &&
     !strcmp(a.name, b.name) && a.mute == b.mute && a.muteMinutes == b.muteMinutes;
 }
@@ -185,6 +185,10 @@ void chimeTests() {
   assert(!apply(state, R"({"audio_level":55.0,"extra_relay":1,"extra_relay_ms":800,"pulse_ms":250,"gap_ms":400})"));
   assert(state.level == 55 && state.extraRelay && state.extraRelayMs == 800 && state.pulseMs == 250 && state.gapMs == 400);
   assert(!apply(state, R"({"name":"Hallway"})") && !strcmp(state.name, "Hallway"));
+  // The ringtone override is off by default and accepts the usual booleans.
+  assert(!ChimeState().overrideRingtone);
+  assert(!apply(state, R"({"override_ringtone":"ON"})") && state.overrideRingtone);
+  assert(!apply(state, R"({"override_ringtone":false})") && !state.overrideRingtone);
   // Mute: permanent, timed, order-independent combination and unmute.
   assert(!apply(state, R"({"mute":"ON"})") && state.mute && state.muteMinutes == 0);
   assert(!apply(state, R"({"mute_minutes":30})") && !state.mute && state.muteMinutes == 30);
@@ -202,7 +206,7 @@ void chimeTests() {
     R"({"audio_output":2})", R"({"audio_output":-1})", R"({"audio_output":"I2S"})",
     R"({"type":"Audio","audio_output":0.5})", R"({"audio_level":101})",
     R"({"audio_level":0.5})", R"({"buzzer_level":50})", R"({"melody":"Siren"})", R"({"melody":10})", R"({"pattern":10})", R"({"type":"relayx"})", R"({"pattern":""})",
-    R"({"led":"maybe"})", R"({"led":2})", R"({"pulse_ms":49})", R"({"gap_ms":3001})",
+    R"({"led":"maybe"})", R"({"led":2})", R"({"override_ringtone":"always"})", R"({"sound":3})", R"({"pulse_ms":49})", R"({"gap_ms":3001})",
     R"({"extra_relay_ms":2001})", R"({"mute_minutes":1441})", R"({"mute_minutes":-1})", R"({"mute":"soon"})", R"({"name":""})", R"({"name":"123456789012345678901234567890123"})",
     R"({"name":"a\u0001b"})", R"({"name":5})",
     // Administrative settings are not part of the chime state.
@@ -218,7 +222,7 @@ void chimeTests() {
   StaticJsonDocument<512> out;
   writeChime(state, out.to<JsonObject>());
   assert(!strcmp(out["type"], "None") && !strcmp(out["melody"], "Double beep") &&
-         !strcmp(out["pattern"], "Long ring") && out["volume"] == 3 && out["led"] == false &&
+         !strcmp(out["pattern"], "Long ring") && out["volume"] == 3 && out["led"] == false && out["override_ringtone"] == false &&
          !strcmp(out["name"], "Hallway"));
   assert(out["mute"] == false && out["mute_minutes"] == 0 && out["audio_output"] == "DAC");
   state.muteMinutes = 20;
@@ -258,14 +262,23 @@ void soundTests() {
   static_assert(Melodies == 10 && Patterns == 10, "V2 has ten ringtone slots");
   // Parse actual plaintext ring commands before selecting the sound; includes
   // the complete u16 range so an upper byte never aliases a valid slot.
+  // The override keeps the saved choices but still rejects unknown IDs.
   for (uint32_t id = 0; id <= UINT16_MAX; ++id) {
     uint8_t plain[] = {9, 0xA4, uint8_t(id), uint8_t(id >> 8)};
     Ring ring{}; assert(ringPayload(plain, ring));
-    uint8_t melody = 2, pattern = 4;
-    assert(doorbellSound(ring.parameter, melody, pattern) == (id < DoorbellSounds));
-    if (id < DoorbellSounds) assert(melody == id && pattern == id);
-    else assert(melody == 2 && pattern == 4);
+    for (bool override : {false, true}) {
+      uint8_t melody = 2, pattern = 4;
+      assert(selectSound(ring.parameter, override, melody, pattern) == (id < DoorbellSounds));
+      if (id < DoorbellSounds && !override) assert(melody == id && pattern == id);
+      else assert(melody == 2 && pattern == 4);
+    }
   }
+  // MQTT/API "sound": an index or either list's name for the same slot.
+  StaticJsonDocument<64> slot;
+  const struct { const char *json; int slot; } slots[] = {{"0", 0}, {"9", 9}, {"\"Ding dong\"", 0},
+    {"\"ding-dong\"", 0}, {"\"Descending\"", 3}, {"\"Long ring\"", 3}, {"\"three_pairs\"", 9},
+    {"10", -1}, {"-1", -1}, {"2.5", -1}, {"\"\"", -1}, {"\"Siren\"", -1}, {"true", -1}, {"null", -1}};
+  for (const auto &s : slots) { assert(!deserializeJson(slot, s.json)); assert(soundSlot(slot.as<JsonVariantConst>()) == s.slot); }
   for (uint8_t i = 0; i < Melodies; ++i) {
     const Note *notes = melodyScore(i);
     assert(notes && notes[0].hz && notes[0].ms);

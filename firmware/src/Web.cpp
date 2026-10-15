@@ -329,14 +329,21 @@ void registerWeb() {
   });
   server.on("/api/gong/test", HTTP_POST, []() {
     if (!mutationAuthorized()) return;
-    // Optional overrides preview a sound without saving it: {"type":0-2,"audio_output":0-1,
+    // "sound" (0-9 or a name) requests a slot like the doorbell's music ID.
+    // Other overrides preview a sound without saving it: {"type":0-2,"audio_output":0-1,
     // "melody":0-9,"volume":0-100,"pattern":0-9,"pulse_ms":50-2000,"gap_ms":100-3000}.
-    GongRequest request = gongRequest(4); uint8_t flags = 0, mode = gongx.type, output = gongAudioOutput;
+    uint8_t flags = 0, mode = gongx.type, output = gongAudioOutput;
     StaticJsonDocument<256> doc;
     const auto in = [&](const char *key, int lo, int hi) {
       return doc[key].is<int>() && doc[key].as<int>() >= lo && doc[key].as<int>() <= hi;
     };
-    if (!deserializeJson(doc,server.arg("plain")) && doc.is<JsonObject>() && doc.size()) {
+    const bool options = !deserializeJson(doc,server.arg("plain")) && doc.is<JsonObject>();
+    int slot = 0;
+    if (options && doc.containsKey("sound") && (slot = chime::soundSlot(doc["sound"])) < 0) {
+      errorReply(400,"sound: 0 to 9 or a melody or pattern name"); return;
+    }
+    GongRequest request = gongRequest(4, uint8_t(slot));
+    if (options && doc.size() > (doc.containsKey("sound") ? 1u : 0u)) {
       flags = chime::RingPreview;
       if (in("type",0,chime::GongKinds-1)) mode=doc["type"].as<int>();
       if (in("audio_output",0,chime::AudioOutputs-1)) output=doc["audio_output"].as<int>();
@@ -359,6 +366,7 @@ void registerWeb() {
     if (!authenticated()) return;
     StaticJsonDocument<256> doc;
     doc["type"]=gongx.type; doc["audio_output"]=gongAudioOutput; doc["pattern"]=gongx.pattern; doc["pulse_ms"]=gongx.pulseMs; doc["gap_ms"]=gongx.gapMs;
+    doc["override_ringtone"]=overrideRingtone;
     doc["relay_available"]=pins.relay>=0; doc["pwm_available"]=pins.audio>=0;
     doc["dac_available"]=pins.audio==25 || pins.audio==26;
     jsonReply(200,doc);
@@ -369,7 +377,8 @@ void registerWeb() {
     if (deserializeJson(doc,server.arg("plain")) || !doc.is<JsonObject>()) { errorReply(400,"Expected a JSON object"); return; }
     for (JsonPairConst pair : doc.as<JsonObjectConst>()) {
       const char *key=pair.key().c_str();
-      if ((strcmp(key,"type") && strcmp(key,"audio_output") && strcmp(key,"pattern") && strcmp(key,"pulse_ms") && strcmp(key,"gap_ms")) ||
+      if (!strcmp(key,"override_ringtone") ? !pair.value().is<bool>() :
+          (strcmp(key,"type") && strcmp(key,"audio_output") && strcmp(key,"pattern") && strcmp(key,"pulse_ms") && strcmp(key,"gap_ms")) ||
           !pair.value().is<int>()) { errorReply(400,"Invalid gong settings"); return; }
     }
     chime::ChimeState preview = currentChime();

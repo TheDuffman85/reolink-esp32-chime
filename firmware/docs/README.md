@@ -26,9 +26,10 @@ and Settings become available and Setup does not return. The README's setup
 images show this initial workflow. Other Setup captures re-enter initial setup
 in the synthetic fixtures to show each sound mode and sign-in state.
 
-The Sound and Setup captures show all ten numbered melodies and gong patterns.
-Doorbell rings follow the Reolink ringtone slot; the local choice sets the
-default for web/button tests and MQTT plays. The audio sounds are synthesized
+The Sound captures show all ten numbered melodies and gong patterns as preview
+lists; `web-sound-relay.png` shows the Override ringtone selection. Rings play
+the slot they request unless the ringtone is overridden. Setup picks no sound.
+The audio sounds are synthesized
 alternatives, as explained in the [original firmware audit](vendor-sounds.md).
 
 | File | View |
@@ -39,7 +40,7 @@ alternatives, as explained in the [original firmware audit](vendor-sounds.md).
 | `images/ui-initial-signin-desktop.png`, `images/ui-initial-signin-mobile.png` | Initial step 4: optional sign-in with masked dummy credentials |
 | `images/ui-initial-review-desktop.png`, `images/ui-initial-review-mobile.png` | Initial step 5: review before saving, only Setup available |
 | `images/ui-initial-complete-desktop.png`, `images/ui-initial-complete-mobile.png` | Initial setup finished: choices saved, Home/Sound/Settings unlocked and Setup tab hidden |
-| `images/web-status.png` | Home: status, Mute/Play chime and ring log |
+| `images/web-status.png` | Home: status, Mute and ring log |
 | `images/web-sound.png` | Sound: Audio mode with PWM output, ten numbered melodies, volume, extra relay pulse and LED |
 | `images/web-sound-dac.png` | Sound: Audio mode with DAC output, the same ten melodies and level |
 | `images/web-sound-relay.png` | Sound: Gong mode, ten numbered strike patterns and timing |

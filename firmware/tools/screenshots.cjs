@@ -73,7 +73,7 @@ const settings = {
 const chime = { name: status.chime_name, volume: 4, led: 1, joined: true,
   doorbell_id: doorbellId, node_id: nodeId, session: '1234', requests: 3,
   last_opcode: 0x15, last_request_ms: 50000, uptime_ms: 60000 };
-const gong = { type: 1, audio_output: 0, pattern: 0, pulse_ms: 300, gap_ms: 700,
+const gong = { type: 1, audio_output: 0, override_ringtone: false, pattern: 0, pulse_ms: 300, gap_ms: 700,
   relay_available: true, pwm_available: true, dac_available: true };
 const pinMap = { sck: 18, miso: 19, mosi: 23, cs: 5, clock: 4, data: 16,
   audio: 25, relay: 26, led: 2, button: 0, relay_active_low: false };
@@ -215,7 +215,28 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     await page.waitForFunction(() => document.getElementById('heroTitle').textContent === 'Ready' &&
       document.querySelectorAll('#pinRows tr').length === 10 &&
       document.getElementById('pinState').textContent === 'Valid' &&
-      document.querySelectorAll('#rings li').length === 5);
+      document.querySelectorAll('#rings li').length === 3);
+    // Header badges stay hidden until the first status reply, at every width.
+    for (const width of [390, 1100]) {
+      await page.setViewportSize({ width, height: 700 });
+      assert.equal(await page.evaluate(() => { const p = document.createElement('span'); p.className = 'pill status pending';
+        document.querySelector('.hdr-right').append(p); const v = getComputedStyle(p).visibility; p.remove(); return v; }), 'hidden');
+      assert.equal(await page.locator('.hdr-right .pill.pending').count(), 0);
+    }
+    // The ring log opens filtered to doorbell rings; All adds tests and MQTT plays.
+    assert.equal(await page.locator('#ringFilter button.on').textContent(), 'Doorbell only');
+    assert.equal(await page.locator('#heroTest').count(), 0);
+    await page.locator('#ringFilter button[data-f="all"]').click();
+    assert.equal(await page.locator('#rings li').count(), 5);
+    await page.locator('#ringFilter button[data-f="doorbell"]').click();
+    // A long log scrolls inside the card; its scrollbar sits in the card padding, clear of the times and badges.
+    await page.setViewportSize({ width: 1100, height: 700 });
+    await page.evaluate(() => { const keep = R.rings; R.rings = Array.from({ length: 15 }, (_, i) => ({ ...keep[0], id: 100 + i })); drawRings(); window.keepRings = keep; });
+    const gap = await page.evaluate(() => { const list = $('rings'), badge = list.querySelector('.badge');
+      return { scrolls: list.scrollHeight > list.clientHeight, clear: list.getBoundingClientRect().right - badge.getBoundingClientRect().right }; });
+    assert.equal(gap.scrolls, true); assert.ok(gap.clear >= 14, 'ring badges clear of the scrollbar');
+    await page.screenshot({ path: process.env.RING_SCROLL_SHOT || '/dev/null', clip: { x: 0, y: 200, width: 1100, height: 500 } });
+    await page.evaluate(() => { R.rings = window.keepRings; drawRings(); });
     // Stabilise the documentation fixture; normal firmware polling is unchanged.
     const stabilise = async () => page.evaluate(() => {
       for (let id = 1; id < 100; ++id) clearInterval(id);
@@ -346,6 +367,29 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
       assert.equal(previews.at(-1).melody, 9);
       assert.equal(previews.at(-1).audio_output, output);
     }
+    // Without the override the lists only preview: only ▶ plays, rows do nothing.
+    assert.match(await page.locator('#ringtoneHint').textContent(), /Reolink app/);
+    assert.equal(await page.locator('#melodies .choice.on').count(), 0);
+    const previewCount = previews.length;
+    await page.locator('#melodies .choice[data-i="3"] b').click();
+    await page.waitForTimeout(200);
+    assert.equal(previews.length, previewCount);
+    assert.equal(await page.locator('#melodies .choice.on').count(), 0);
+    await Promise.all([page.waitForResponse(r => r.url().endsWith('/api/gong/test')), page.locator('#melodies button[data-play="3"]').click()]);
+    assert.equal(previews.at(-1).melody, 3);
+    assert.equal(await page.evaluate(() => soundPick), 0);
+    // The override makes the list selectable.
+    await page.locator('#override').check();
+    // Leaving a page with unsaved changes asks first; Keep editing stays.
+    await page.locator('#nav button[data-tab="home"]').click();
+    await page.locator('#dlg').waitFor();
+    assert.match(await page.locator('#dlgTitle').textContent(), /Discard unsaved changes/);
+    assert.match(await page.locator('#dlgText').textContent(), /the sound settings/);
+    await page.locator('#dlgCancel').click();
+    assert.equal(await page.evaluate(() => activeTab), 'sound');
+    assert.equal(await page.locator('#override').isChecked(), true);
+    assert.equal(await page.locator('#melodies .choice.on').count(), 1);
+    assert.match(await page.locator('#ringtoneHint').textContent(), /Every ring plays the selected melody/);
     // Switching between audio and gong keeps the numbered doorbell slot.
     await page.locator('#melodies .choice[data-i="9"]').click();
     await page.locator('#gongTypes .choice').filter({ has: page.locator('b', { hasText: /^Gong$/ }) }).click();
@@ -363,14 +407,25 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     // Saving and reloading retains DAC, even when switching through Gong/None.
     await page.locator('#soundSave').click();
     await page.waitForFunction(() => !dirty);
-    assert.equal(gong.type, 0); assert.equal(gong.audio_output, 1);
+    assert.equal(gong.type, 0); assert.equal(gong.audio_output, 1); assert.equal(gong.override_ringtone, true);
     for (const mode of ['Gong', 'None', 'Audio']) {
       await page.locator('#gongTypes .choice').filter({ has: page.locator('b', { hasText: new RegExp('^' + mode + '$') }) }).click();
       await page.locator('#soundSave').click();
       await page.waitForFunction(() => !dirty);
       assert.equal(gong.audio_output, 1);
       assert.equal(await page.locator('#audioCards').isVisible(), mode === 'Audio');
+      assert.equal(await page.locator('#ringtoneCard').isVisible(), mode !== 'None');
     }
+    assert.equal(gong.override_ringtone, true);
+    assert.match(await page.evaluate(() => soundText()), /^Audio always plays Ding dong$/);
+    // Discard changes reverts the edited page and continues.
+    await page.locator('#relay').check();
+    await page.locator('#nav button[data-tab="settings"]').click();
+    await page.locator('#dlg').waitFor();
+    await page.locator('#dlgOk').click();
+    await page.waitForFunction(() => activeTab === 'settings' && !dirty);
+    await page.locator('#nav button[data-tab="sound"]').click();
+    assert.equal(await page.locator('#relay').isChecked(), false);
     assert.equal(await page.locator('#audioOutputs .choice.on b').textContent(), 'DAC');
     // Invalid DAC wiring keeps PWM selected, so the owner can still use Audio.
     gong.dac_available = false; gong.audio_output = 0;
@@ -378,17 +433,18 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     await page.locator('#audioOutputs .choice').filter({ hasText: 'DAC' }).click();
     assert.equal(await page.locator('#audioOutputs .choice.on b').textContent(), 'PWM');
     assert.equal(await page.locator('#gongTypes .choice.on b').textContent(), 'Audio');
-    gong.dac_available = true;
+    gong.dac_available = true; gong.override_ringtone = false;
     gong.type = 0; gong.audio_output = 0;
     await page.evaluate(async () => { await loadSettings(); render(); });
     await capture('web-sound.png', 'sound');
     gong.type = 0; gong.audio_output = 1;
     await page.evaluate(async () => { await loadSettings(); render(); });
     await capture('web-sound-dac.png', 'sound');
-    gong.type = 1; gong.pattern = 1;
+    gong.type = 1; gong.pattern = 1; gong.override_ringtone = true;
     await page.evaluate(async () => { await loadSettings(); render(); });
+    assert.match(await page.locator('#patterns .choice.on b').textContent(), /Double/);
     await capture('web-sound-relay.png', 'sound');
-    gong.type = 1; gong.pattern = 0;
+    gong.type = 1; gong.pattern = 0; gong.override_ringtone = false;
     await page.evaluate(async () => { await loadSettings(); render(); });
     await page.evaluate(()=>{wizStep=0});
     await capture('web-setup-wifi.png', 'setup', 1100, 800);
@@ -401,41 +457,16 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     assert.deepEqual(await page.locator('#wizTypes .choice b').allTextContents(), ['Gong', 'Audio', 'None']);
     assert.equal(await page.locator('#wizTypes .choice.on b').textContent(), 'Gong');
     assert.equal(await page.locator('#wizAudioField').isVisible(), false);
+    // Setup picks no ringtone: rings play what the doorbell requests.
+    assert.equal(await page.locator('#melodies2').count(), 0);
     // Polling must preserve Setup drafts separately from the Sound tab.
-    await page.locator('#melodies2 .choice[data-i="4"]').click();
-    await page.waitForFunction(()=>!wizWireBusy&&wizWireOk);
-    await page.evaluate(async()=>{await refresh();await loadSettings();render()});
-    assert.equal(await page.evaluate(()=>wizardSoundBody().chime.pattern),4);
-    assert.match(await page.locator('#melodies2 .choice.on b').textContent(),/Insistent/);
-    // Phones pick the ten patterns from a dropdown with a play button.
-    await page.setViewportSize({ width: 390, height: 900 });
-    assert.equal(await page.locator('#melodies2 .choice:visible').count(),0);
-    assert.equal(await page.locator('#melodies2 select').inputValue(),'4');
-    assert.equal(await page.locator('#melodies2 .pickm small').textContent(),'Five quick strikes');
-    await page.locator('#melodies2 select').selectOption('1');
-    assert.match(await page.locator('#melodies2 .choice.on b').textContent(),/Double/);
-    assert.equal(await page.evaluate(()=>wizardSoundBody().chime.pattern),1);
-    await page.waitForFunction(()=>!wizWireBusy&&wizWireOk);
-    await Promise.all([page.waitForResponse(r=>r.url().endsWith('/api/gong/test')),page.locator('#melodies2 [data-mplay]').click()]);
-    assert.equal(previews.at(-1).pattern,1);
-    await page.setViewportSize({ width: 1100, height: 1000 });
-    await page.locator('#melodies2 .choice[data-i="0"]').click();
-    await page.waitForFunction(()=>!wizWireBusy&&wizWireOk);
-
     await page.locator('#wizTypes .choice').filter({ has: page.locator('b', { hasText: /^Audio$/ }) }).click();
     await page.locator('#wizAudioOutputs .choice').filter({ hasText: 'DAC' }).click();
     await page.waitForFunction(() => wizAudioPick === 1 && !wizWireBusy && wizWireOk);
-    await page.locator('#melodies2 .choice[data-i="2"]').click();
-    await page.waitForFunction(()=>!wizWireBusy&&wizWireOk);
     await page.evaluate(async()=>{await refresh();await loadSettings();render()});
-    assert.equal(await page.evaluate(()=>wizardSoundBody().chime.melody),2);
-    assert.match(await page.locator('#melodies2 .choice.on b').textContent(),/Double beep/);
-    await page.locator('#melodies2 .choice[data-i="0"]').click();
-    await page.waitForFunction(()=>!wizWireBusy&&wizWireOk);
-
-    await Promise.all([page.waitForResponse(r => r.url().endsWith('/api/gong/test')), page.locator('#melodies2 button[data-play="0"]').click()]);
-    assert.equal(previews.at(-1).type, 0); assert.equal(previews.at(-1).audio_output, 1);
-    assert.equal(previews.at(-1).extra_relay,false);
+    const draft = await page.evaluate(()=>wizardSoundBody().chime);
+    assert.equal(draft.type, 0); assert.equal(draft.audio_output, 1);
+    assert.equal('melody' in draft || 'pattern' in draft, false);
     const savesBeforeReview = setupSaves.length;
     await page.locator('#sNext').click();
     await page.locator('#wizAuthNext').click();
@@ -443,6 +474,11 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     assert.equal(setupSaves.length, savesBeforeReview);
     assert.equal(status.setup_visible,true);
     assert.equal(await page.locator('#doneTitle').textContent(), 'Ready to finish');
+    assert.match(await page.locator('#doneSummary').textContent(), /RingtoneAs requested by the doorbell/);
+    // The review test plays like a ring without a requested sound, through the chosen output.
+    await Promise.all([page.waitForResponse(r => r.url().endsWith('/api/gong/test')), page.locator('#dTest').click()]);
+    assert.equal(previews.at(-1).type, 0); assert.equal(previews.at(-1).audio_output, 1);
+    assert.equal(previews.at(-1).extra_relay,false); assert.equal('melody' in previews.at(-1), false);
     await page.locator('#dHome').click();
     await page.waitForFunction(() => wizSetupSaved);
     assert.equal(setupSaves.length, savesBeforeReview + 1);
@@ -456,7 +492,6 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     await page.locator('#wizAudioPin').selectOption('26');
     await page.waitForFunction(() => !wizWireBusy && wizWireOk);
     assert.equal(await page.locator('#sNext').textContent(), 'Next');
-    assert.equal(await page.locator('#melodies2 button[data-play="0"]').isDisabled(), true);
     const savesBeforeApply = setupSaves.length;
     await page.locator('#sNext').click();
     await page.locator('#wizAuthNext').click();
@@ -694,8 +729,7 @@ const log = '    12.100 [link] joined\n    50.000 [app] config: name=\'Demo ESP3
     await capture('ui-setup-extra-relay-mobile.png', 'setup', 390, 900, undefined, true);
     await page.locator('#wizExtraRelay').uncheck();
     await page.waitForFunction(()=>!wizWireBusy&&wizWireOk);
-    assert.equal(await page.locator('#melodies2 select').inputValue(),'0');
-    await Promise.all([page.waitForResponse(r=>r.url().endsWith('/api/gong/test')),page.locator('#melodies2 [data-mplay]').click()]);
+    await Promise.all([page.waitForResponse(r=>r.url().endsWith('/api/gong/test')),page.evaluate(()=>wizardPreview())]);
     assert.equal(settings.relay,true);assert.equal(previews.at(-1).extra_relay,false);
 
     settings.relay=false;

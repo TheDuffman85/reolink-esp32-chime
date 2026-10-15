@@ -1,5 +1,5 @@
 {
-  "firmware_version": "1.0.31",
+  "firmware_version": "1.0.32",
   "readme_screenshots": {
     "home": "readme-home.png",
     "mobile": "readme-mobile.png",
@@ -21,7 +21,7 @@
     "debug": "readme-debug.png",
     "update": "readme-update.png"
   },
-  "embedded_ui_sha256": "37d3d636c10f63b891cca3d8cdae6699b98cec37fa1eacfe9af14219dddc752a",
+  "embedded_ui_sha256": "668a8804cf981ab4cddd39f1cc3360be775f4b5a585c6cae538f522fd3211364",
   "data": "Synthetic API fixtures; no device connection",
   "screenshots": [
     {
@@ -197,7 +197,7 @@
       "tab": "home",
       "viewport": {
         "width": 390,
-        "height": 997
+        "height": 900
       }
     },
     {
@@ -365,7 +365,7 @@
       "tab": "sound",
       "viewport": {
         "width": 390,
-        "height": 1514
+        "height": 1586
       }
     },
     {
@@ -381,7 +381,7 @@
       "tab": "setup",
       "viewport": {
         "width": 390,
-        "height": 1313
+        "height": 1205
       }
     },
     {
@@ -413,7 +413,7 @@
       "tab": "sound",
       "viewport": {
         "width": 390,
-        "height": 1945
+        "height": 2039
       }
     },
     {
@@ -429,7 +429,7 @@
       "tab": "setup",
       "viewport": {
         "width": 390,
-        "height": 1458
+        "height": 1350
       }
     },
     {
@@ -461,7 +461,7 @@
       "tab": "sound",
       "viewport": {
         "width": 390,
-        "height": 1967
+        "height": 2061
       }
     },
     {
@@ -477,7 +477,7 @@
       "tab": "setup",
       "viewport": {
         "width": 390,
-        "height": 1458
+        "height": 1350
       }
     },
     {
@@ -509,7 +509,7 @@
       "tab": "sound",
       "viewport": {
         "width": 390,
-        "height": 1006
+        "height": 919
       }
     },
     {
@@ -573,7 +573,7 @@
       "tab": "setup",
       "viewport": {
         "width": 390,
-        "height": 1647
+        "height": 1540
       }
     },
     {
@@ -621,7 +621,7 @@
       "tab": "setup",
       "viewport": {
         "width": 390,
-        "height": 1313
+        "height": 1205
       }
     },
     {
@@ -669,7 +669,7 @@
       "tab": "home",
       "viewport": {
         "width": 390,
-        "height": 974
+        "height": 900
       }
     },
     {
@@ -889,9 +889,9 @@
     0,
     1,
     1,
-    null,
     1,
     null,
+    1,
     1,
     0
   ],

@@ -57,6 +57,11 @@ int chimeEnum(JsonVariantConst value, const char *const *names, uint8_t count) {
   return -1;
 }
 
+int soundSlot(JsonVariantConst value) {
+  const int melody = chimeEnum(value, MelodyNames, Melodies);
+  return melody >= 0 ? melody : chimeEnum(value, PatternNames, Patterns);
+}
+
 const char *applyChime(JsonObjectConst update, ChimeState &state) {
   if (update.isNull()) return "Expected a JSON object";
   ChimeState next = state;
@@ -77,6 +82,9 @@ const char *applyChime(JsonObjectConst update, ChimeState &state) {
     } else if (!strcmp(key, "pattern")) {
       if ((pick = chimeEnum(value, PatternNames, Patterns)) < 0) return "pattern: 0 to 9 or a pattern name";
       next.pattern = uint8_t(pick);
+    } else if (!strcmp(key, "override_ringtone")) {
+      if (!boolean(value, flag)) return "override_ringtone: true or false";
+      next.overrideRingtone = flag;
     } else if (!strcmp(key, "audio_level")) {
       if (!integer(value, 0, 100, number)) return "audio_level: 0 to 100";
       next.level = uint8_t(number);
@@ -127,6 +135,7 @@ void writeChime(const ChimeState &state, JsonObject out) {
   out["audio_output"] = AudioOutputNames[state.audioOutput < AudioOutputs ? state.audioOutput : 0];
   out["melody"] = MelodyNames[state.melody < Melodies ? state.melody : 0];
   out["pattern"] = PatternNames[state.pattern < Patterns ? state.pattern : 0];
+  out["override_ringtone"] = state.overrideRingtone;
   out["audio_level"] = state.level; out["volume"] = state.volume;
   out["led"] = state.led; out["extra_relay"] = state.extraRelay;
   out["extra_relay_ms"] = state.extraRelayMs;

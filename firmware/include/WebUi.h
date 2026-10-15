@@ -23,7 +23,7 @@ header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px so
 .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}.dot.ok{background:var(--ok)}.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}
 .dot.pulse,.sicon.pulse{animation:pulse 1.4s infinite}
 .sicon{width:15px;height:15px;flex:none;color:var(--muted)}.sicon.ok{color:var(--ok)}.sicon.warn{color:var(--warn)}.sicon.bad{color:var(--bad)}
-@media (max-width:759px){.pill.status>span{display:none}.pill.status{padding:6px;gap:0}}@keyframes pulse{50%{opacity:.35}}
+@media (max-width:759px){.pill.status>span{display:none}.pill.status{padding:6px;gap:0}}.pill.pending{visibility:hidden}@keyframes pulse{50%{opacity:.35}}
 nav{position:fixed;bottom:0;left:0;right:0;z-index:6;background:var(--panel);border-top:1px solid var(--line);display:flex;justify-content:center;padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
 nav button{flex:1;max-width:140px;background:none;border:0;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;font:inherit;font-size:.75rem;cursor:pointer;border-radius:12px}
 nav button.hidden{display:none}.settings-flow .stepper-title,.settings-flow #pBack{display:none}
@@ -57,7 +57,7 @@ input[type=range]{padding:0;accent-color:var(--accent);background:none;border:0}
 .switch input:checked{background:var(--accent2)}.switch input:checked::after{left:23px}.switch small{display:block;color:var(--muted)}
 .choices{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr))}
 .choice{border:1px solid var(--line);border-radius:14px;padding:14px;background:var(--panel2);cursor:pointer;display:flex;align-items:center;gap:10px}
-.choice.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}.pickm{display:none;grid-column:1/-1}.pickm .row{flex-wrap:nowrap}.pickm select{flex:1;min-width:0}.pickm small{display:block;color:var(--muted);margin-top:6px}
+.previewlist>.choice{cursor:default}.choice.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}.pickm{display:none;grid-column:1/-1}.pickm .row{flex-wrap:nowrap}.pickm select{flex:1;min-width:0}.pickm small{display:block;color:var(--muted);margin-top:6px}
 @media (max-width:599px){.picklist>.choice{display:none}.picklist>.pickm{display:block}}.choice b{display:block}.choice small{color:var(--muted)}
 .seg{display:flex;flex-wrap:wrap;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px;width:max-content;max-width:100%}.seg button{border:0;background:none;padding:7px 14px;border-radius:9px}.seg button.on{background:var(--accent2);color:#fff}
 .list{border:1px solid var(--line);border-radius:14px;overflow:hidden;max-height:260px;overflow-y:auto}.list button{width:100%;border:0;border-radius:0;border-top:1px solid var(--line);justify-content:flex-start;background:var(--panel);text-align:left}.list button:first-child{border-top:0}
@@ -78,8 +78,8 @@ details{border-top:1px solid var(--line);padding-top:10px;margin-top:14px}summar
 .notice{border-radius:12px;padding:12px 14px;background:color-mix(in srgb,var(--warn) 14%,var(--panel));border:1px solid color-mix(in srgb,var(--warn) 40%,var(--line));font-size:.9rem;margin-bottom:12px}
 .toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;background:var(--text);color:var(--bg);padding:10px 16px;border-radius:12px;box-shadow:var(--shadow);transition:.25s;z-index:20;max-width:calc(100% - 32px)}
 .toast.show{opacity:1;transform:translateX(-50%)}.toast.bad{background:var(--bad);color:#fff}@media (min-width:860px){.toast{bottom:24px}}
-.rings{list-style:none;margin:12px 0 0;padding:0;max-height:480px;overflow-y:auto}.rings li{display:flex;gap:12px;align-items:center;padding:10px 2px;border-top:1px solid var(--line)}.rings li:first-child{border-top:0}
-.ring-ic{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:var(--panel2);flex:none;color:var(--accent)}.ring-ic.door{color:var(--ok)}
+.rings{list-style:none;margin:12px -14px 0 0;padding:0 14px 0 0;max-height:480px;overflow-y:auto;scrollbar-width:thin}.rings li{display:flex;gap:12px;align-items:center;padding:10px 2px;border-top:1px solid var(--line)}.rings li:first-child{border-top:0}
+.ring-ic{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:var(--panel2);flex:none;color:var(--accent)}.ring-ic.door{color:var(--accent)}
 .ring-main{flex:1;min-width:0}.ring-main b{display:block;font-weight:600}.ring-main small{color:var(--muted);display:block;overflow-wrap:anywhere}.ring-side{text-align:right;flex:none;font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums}
 .badge{display:inline-block;padding:1px 8px;border-radius:99px;font-size:.75rem;border:1px solid var(--line);margin-top:3px}.badge.played{color:var(--ok)}.badge.muted{color:var(--warn)}.badge.busy{color:var(--bad)}.badge.silent{color:var(--muted)}.badge.chime_muted{color:var(--warn)}
 .mutemenu{flex-basis:100%;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding-top:4px}.mutemenu b{font-weight:500;color:var(--muted);margin-right:4px}
@@ -131,7 +131,7 @@ button.dangerbtn{background:#dc2626;border-color:#dc2626;color:#fff;font-weight:
 <symbol id="i-link" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
 </defs></svg>
 <header><div class="bar"><div class="brand"><div class="logo"><svg width="20" height="20"><use href="#i-bell"/></svg></div><div style="min-width:0"><b id="hdrName">Chime</b></div></div>
-<div class="hdr-right"><span class="pill status click hidden" id="hdrMute" title="Muted · open Home to unmute"><svg class="sicon" style="color:var(--warn)"><use href="#i-belloff"/></svg><span>Muted</span></span><span class="pill status" id="hdrLinkPill"><svg class="sicon" data-base="sicon" id="hdrLinkDot"><use href="#i-link"/></svg><span id="hdrLink">…</span></span><span class="pill status" id="hdrWifiPill"><svg class="sicon" data-base="sicon" id="hdrWifiDot"><use href="#i-wifi"/></svg><span id="hdrWifi">…</span></span>
+<div class="hdr-right"><span class="pill status click hidden" id="hdrMute" title="Muted · open Home to unmute"><svg class="sicon" style="color:var(--warn)"><use href="#i-belloff"/></svg><span>Muted</span></span><span class="pill status pending" id="hdrLinkPill"><svg class="sicon" data-base="sicon" id="hdrLinkDot"><use href="#i-link"/></svg><span id="hdrLink">…</span></span><span class="pill status pending" id="hdrWifiPill"><svg class="sicon" data-base="sicon" id="hdrWifiDot"><use href="#i-wifi"/></svg><span id="hdrWifi">…</span></span>
 <div class="userbar hidden" id="userWrap"><span class="userchip" title="Signed in"><span class="avatar"><svg width="14" height="14"><use href="#i-user"/></svg></span><span id="userName"></span></span><button class="signout" id="umOut" title="Sign out" aria-label="Sign out"><svg width="16" height="16"><use href="#i-logout"/></svg><span>Sign out</span></button></div></div></div>
 <nav id="nav">
 <button data-tab="home" class="on"><svg><use href="#i-home"/></svg>Home</button>
@@ -142,16 +142,18 @@ button.dangerbtn{background:#dc2626;border-color:#dc2626;color:#fff;font-weight:
 <section class="tab on" id="tab-home">
 <div class="notice hidden" id="identityNotice">This chime needs to be paired again before the doorbell can ring it. Remove its old entry in the Reolink app, then use Settings → Doorbell → Pair again.</div>
 <div class="card hero"><div class="icon" id="heroIcon"><svg><use href="#i-bell"/></svg></div><div class="text"><h1 id="heroTitle">Connecting…</h1><p id="heroText">Reading chime status.</p></div>
-<div class="actions"><button class="hidden" id="heroSetup">Pair doorbell</button><button id="heroMute"><svg width="16" height="16"><use href="#i-belloff"/></svg><span id="heroMuteText">Mute</span></button><button class="primary" id="heroTest"><svg width="16" height="16"><use href="#i-play"/></svg>Play chime</button></div>
-<div class="mutemenu hidden" id="muteMenu"><b>Mute for</b><button class="small" data-m="30">30 min</button><button class="small" data-m="60">1 h</button><button class="small" data-m="120">2 h</button><button class="small" data-m="240">4 h</button><button class="small" data-m="480">8 h</button><button class="small" data-m="0">Until I unmute</button></div></div>
+<div class="actions"><button class="hidden" id="heroSetup">Pair doorbell</button><button id="heroMute"><svg width="16" height="16"><use href="#i-belloff"/></svg><span id="heroMuteText">Mute</span></button></div>
+<div class="mutemenu hidden" id="muteMenu"><b>Mute for</b><button class="small" data-m="30">30 min</button><button class="small" data-m="60">1 h</button><button class="small" data-m="120">2 h</button><button class="small" data-m="240">4 h</button><button class="small" data-m="480">8 h</button><button class="small" data-m="0">Permanently</button></div></div>
 <div class="card"><div class="row"><div style="min-width:0"><h2>Ring log</h2><p class="sub" id="ringSummary" style="margin:2px 0 0">Loading…</p></div><span class="spacer"></span><div class="seg" id="ringFilter"><button type="button" data-f="all">All</button><button type="button" data-f="doorbell">Doorbell only</button></div><button class="small ghost" id="ringClear">Clear</button></div>
 <ul class="rings" id="rings"></ul></div></section>
 <!-- SOUND -->
 <section class="tab" id="tab-sound">
-<div class="card"><h2>Sound mode</h2><p class="sub">Choose what makes the sound when someone rings. Doorbell rings follow the selected Reolink ringtone: ten numbered slots map to ten melodies or gong patterns. The choices below set the default for local tests and MQTT plays.</p><div class="choices" id="gongTypes"></div></div>
+<div class="card"><h2>Sound mode</h2><p class="sub">Choose what makes the sound when someone rings.</p><div class="choices" id="gongTypes"></div></div>
+<div class="card hidden" id="audioOutputCard"><h2>Audio output</h2><p class="sub">Choose the output method for your amplifier. Both play the same melodies.</p><div class="choices" id="audioOutputs"></div><p class="sub" id="audioOutputHint" style="margin:12px 0 0"></p></div>
+<div class="card" id="ringtoneCard"><h2>Ringtone</h2>
+<label class="switch"><div>Override ringtone<small>Always play the selected sound, whatever the doorbell, MQTT or API requests.</small></div><input type="checkbox" id="override"></label>
+<p class="sub" id="ringtoneHint" style="margin:12px 0"></p><div class="choices" id="melodies"></div><div class="choices" id="patterns"></div></div>
 <div id="audioCards" class="hidden">
-<div class="card"><h2>Audio output</h2><p class="sub">Choose the output method for your amplifier. Both play the same melodies.</p><div class="choices" id="audioOutputs"></div><p class="sub" id="audioOutputHint" style="margin:12px 0 0"></p></div>
-<div class="card"><h2>Melody for local tests</h2><p class="sub">Synthesized alternatives to the Reolink sounds; the original recordings live in a separate sound chip. Plays through the selected PWM or DAC output. Tap ▶ to preview.</p><div class="choices" id="melodies"></div></div>
 <div class="card"><h2>Volume</h2><p class="sub">The audio level sets the maximum. The chime volume (also set in the Reolink app) scales it.</p>
 <label class="field"><span>Audio level: <b id="levelOut"></b>%</span><input type="range" id="level" min="0" max="100" step="5"></label>
 <div class="field"><span class="muted" style="display:block;font-size:.85rem;margin-bottom:6px">Chime volume</span><div class="row"><div class="seg" id="appVolume"></div><span class="spacer"></span><button id="previewVolume"><svg width="14" height="14"><use href="#i-play"/></svg>Preview at this volume</button></div></div></div>
@@ -160,8 +162,7 @@ button.dangerbtn{background:#dc2626;border-color:#dc2626;color:#fff;font-weight:
 <label class="field" id="relayMsField"><span>Relay pulse: <b id="relayMsOut"></b> ms</span><input type="range" id="relayMs" min="50" max="2000" step="50"></label></div>
 </div>
 <div id="relayCards">
-<div class="card"><h2>Strike pattern for local tests</h2><p class="sub">The relay energises the gong coil once per strike. On a classic two-tone gong, energising plays “ding” and releasing plays “dong”. Numbered patterns correspond to the doorbell ringtone slots. Tap ▶ to try it.</p><div class="choices" id="patterns"></div></div>
-<div class="card"><h2>Timing</h2><p class="sub">Most 8–12 V AC gongs need 200–400 ms per strike. Too short and the plunger does not reach the bar.</p>
+<div class="card"><h2>Timing</h2><p class="sub">The relay energises the gong coil once per strike. On a classic two-tone gong, energising plays “ding” and releasing plays “dong”. Most 8–12 V AC gongs need 200–400 ms per strike. Too short and the plunger does not reach the bar.</p>
 <label class="field"><span>Strike length: <b id="pulseOut"></b> ms</span><input type="range" id="pulse" min="50" max="2000" step="25"></label>
 <label class="field"><span>Pause between strikes: <b id="gapOut"></b> ms</span><input type="range" id="gap" min="100" max="3000" step="50"></label>
 <p class="sub" style="margin:8px 0 0">Setting the chime volume to “Mute” in the Reolink app silences the gong.</p>
@@ -192,11 +193,10 @@ button.dangerbtn{background:#dc2626;border-color:#dc2626;color:#fff;font-weight:
 <div class="phases" id="phases"></div><div class="progress"><div id="pairBar"></div></div>
 <div class="stepact"><button class="hidden" id="pCancel">Cancel</button><button id="pStart"><svg width="16" height="16"><use href="#i-link"/></svg><span>Start pairing</span></button><p class="sub" id="pairText"></p></div>
 <div class="btnbar wiz"><button class="ghost left" id="pBack">Back</button><button id="pNext">Next</button></div></div>
-<div id="wiz2" class="hidden"><div class="stepper-title">Step 3 of 5</div><h2>Make it yours</h2><p class="sub">The name appears in the Reolink app. Doorbell rings follow its selected ringtone slot. Pick an output and a default sound for local tests and MQTT plays.</p>
+<div id="wiz2" class="hidden"><div class="stepper-title">Step 3 of 5</div><h2>Make it yours</h2><p class="sub">The name appears in the Reolink app. Each ring plays the ringtone selected for it in the Reolink app. Choose what makes the sound and how it is wired.</p>
 <label class="field"><span>Chime name</span><input id="sName" maxlength="32"></label>
 <div class="field"><span>Sound mode</span><div class="choices" id="wizTypes"></div></div>
 <div class="field hidden" id="wizAudioField"><span>Audio output</span><div class="choices" id="wizAudioOutputs"></div></div>
-<div class="field" id="wizSoundField"><span id="wizSoundLabel">Sound</span><div class="choices" id="melodies2"></div></div>
 <div id="wizWiring" style="border:1px solid var(--line);border-radius:14px;padding:16px;margin:16px 0;background:var(--panel2)"><h3>Wiring</h3><p class="sub" id="wizWireHint"></p>
 <div class="pair2">
 <label class="field hidden" id="wizAudioPinField"><span>Audio output GPIO</span><select id="wizAudioPin"></select></label>
@@ -345,10 +345,10 @@ function linkState(){if(!S)return['…',''];const p=S.pairing;if(S.joined)return
 // Tabs
 const initialSetup=()=>!!(S&&S.setup_required);
 function show(tab){if(!S)return;if(initialSetup()){if(tab!=='setup'&&activeTab==='setup')return;tab='setup'}else if(tab==='setup')tab='home';if(tab!=='settings')closeSettingsFlow();if(tab!=='setup'&&wizStep===4)wizStep=0;activeTab=tab;for(const b of $('nav').children)b.classList.toggle('on',b.dataset.tab===tab);for(const t of document.querySelectorAll('.tab'))t.classList.toggle('on',t.id==='tab-'+tab);try{localStorage.setItem('tab',tab)}catch(e){}if(tab==='setup')wizard(wizStep);if(tab==='settings')openSection(section,innerWidth>=860);scrollTo(0,0)}
-for(const b of $('nav').children)b.onclick=()=>show(b.dataset.tab);
+for(const b of $('nav').children)b.onclick=async()=>{if(b.dataset.tab!==activeTab&&!await confirmLeave())return;show(b.dataset.tab)};
 // Status
-async function refresh(){try{S=await api('/api/status');token=S.csrf;C=await api('/api/chime')}catch(e){$('heroTitle').textContent='Chime unreachable';$('heroText').textContent=e.message;$('hdrLink').textContent='Offline';setDot('hdrLinkDot','bad');$('hdrLinkPill').title='Offline';return}render()}
-function render(){if(!S||!C)return;const [lt,lc]=linkState(),busy=lc==='warn';$('hdrName').textContent=C.name||'Chime';document.title=C.name||'Chime';$('hdrLink').textContent=lt;setDot('hdrLinkDot',lc,busy);
+async function refresh(){try{S=await api('/api/status');token=S.csrf;C=await api('/api/chime')}catch(e){$('heroTitle').textContent='Chime unreachable';$('heroText').textContent=e.message;$('hdrLink').textContent='Offline';setDot('hdrLinkDot','bad');$('hdrLinkPill').title='Offline';$('hdrLinkPill').classList.remove('pending');return}render()}
+function render(){if(!S||!C)return;for(const p of document.querySelectorAll('.pill.pending'))p.classList.remove('pending');const [lt,lc]=linkState(),busy=lc==='warn';$('hdrName').textContent=C.name||'Chime';document.title=C.name||'Chime';$('hdrLink').textContent=lt;setDot('hdrLinkDot',lc,busy);
 const ownAp=S.wifi_mode==='ap';$('hdrWifi').textContent=S.wifi_connected?S.ssid:ownAp?S.ap_name:S.ap_active?'Setup hotspot':'Offline';setDot('hdrWifiDot',S.wifi_connected||ownAp&&S.ap_active?'ok':S.ap_active?'warn':'bad');
 const incompatible=S.identity_compatible===false;$('identityNotice').classList.toggle('hidden',!incompatible);
 // Setup exists only until initial setup finishes, and it hides the navigation.
@@ -358,9 +358,9 @@ $('heroTitle').textContent=incompatible?'Pair again to enable ringing':S.joined?
 $('heroText').textContent=incompatible?'Remove the old chime in the Reolink app, then pair again under Settings → Doorbell.':S.joined?`“${C.name}” is listening. ${soundText()}.`:needsSetup?'Connect it to WiFi and pair it with your Reolink doorbell in a few steps.':busy?'Talking to the doorbell…':'The chime is paired but not connected. It retries after a restart, or reconnect it in Settings.';
 $('userWrap').classList.toggle('hidden',!S.auth_enabled);$('userName').textContent=S.auth_user||'';
 const M=S.mute||{},muted=!!M.active;$('hdrMute').classList.toggle('hidden',!muted||initialSetup());$('heroMuteText').textContent=muted?'Unmute':'Mute';
-if(muted&&S.joined&&!incompatible){$('heroTitle').textContent='Muted';$('heroText').textContent=`Doorbell rings are logged but make no sound ${muteUntilText(M)}. Play chime still plays.`}
+if(muted&&S.joined&&!incompatible){$('heroTitle').textContent='Muted';$('heroText').textContent=`Doorbell rings are logged but make no sound ${muteUntilText(M)}. Sound previews still play.`}
 if(!S.radio_ok){$('heroTitle').textContent='Radio error';$('heroText').textContent=`${S.radio_error||'The CC1101 radio does not respond'}. Check its wiring and power; details in Settings → Debug.`}
-$('heroIcon').style.color=!S.radio_ok?'var(--bad)':muted?'var(--warn)':S.joined?'var(--ok)':needsSetup?'var(--accent)':'var(--warn)';$('heroIcon').innerHTML=`<svg><use href="#i-${muted?'belloff':'bell'}"/></svg>`;
+$('heroIcon').style.color=!S.radio_ok?'var(--bad)':muted?'var(--warn)':S.joined?'var(--accent)':needsSetup?'var(--accent)':'var(--warn)';$('heroIcon').innerHTML=`<svg><use href="#i-${muted?'belloff':'bell'}"/></svg>`;
 if(S.ring_seq!==ringSeq)loadRings();else drawRings();
 kv('cfgWifi',[['Status',S.wifi_connected?'Connected':S.wifi_configured?'Not connected':'Not set up'],['Network',S.wifi_configured?S.ssid||'—':'—'],['Signal',S.wifi_connected?`${S.wifi_rssi} dBm (${S.wifi_rssi>=-55?'excellent':S.wifi_rssi>=-67?'good':S.wifi_rssi>=-75?'fair':'weak'})`:'—'],['Address',S.wifi_connected?S.ip:'—'],['Name',S.hostname],[ownAp?'Access point':'Setup hotspot',S.ap_active?`${S.ap_name} (192.168.4.1)`:'Off']]);
 kv('cfgBell',[['Status',lt],['Doorbell ID',S.paired?S.doorbell_id:'—'],['Chime ID',S.node_id],['Session',S.joined?C.session:'—'],['Requests',C.requests]]);
@@ -404,33 +404,36 @@ function typeCards(el,selected,onPick){cards(el,TYPE_ORDER.map(i=>TYPES[i]),TYPE
 function typeAvailable(type){if(!X)return true;const ok=type===1?X.relay_available:type===0?X.pwm_available:true;if(!ok)toast(type===1?'Assign a relay GPIO under Settings → Advanced → Wiring first.':'Assign an Audio output GPIO under Settings → Advanced → Wiring first.',true);return ok}
 function audioAvailable(output){if(!X)return true;const ok=output===1?X.dac_available:X.pwm_available;if(!ok)toast(output===1?'DAC requires Audio output GPIO25 or GPIO26. Set it under Settings → Advanced → Wiring first.':'Assign an Audio output GPIO under Settings → Advanced → Wiring first.',true);return ok}
 function audioOutputCards(el,selected,onPick,allowUnwired=false){cards(el,OUTPUTS,selected,i=>{if(i===selected)return;if(!allowUnwired&&!audioAvailable(i))return false;onPick(i)})}
-const soundText=()=>!X?'Rings follow the doorbell ringtone':X.type===2?'Rings are silent (mode None) and only logged':X.type===1?'Gong patterns follow the doorbell ringtone':'Audio melodies follow the doorbell ringtone';
+const soundName=(list,i)=>(list[i]||list[0])[0].replace(/^\d+\. /,'');
+const soundText=()=>!X?'Rings play the requested ringtone':X.type===2?'Rings are silent (mode None) and only logged':X.override_ringtone?(X.type===1?'The gong always plays '+soundName(PATTERNS,X.pattern):'Audio always plays '+soundName(MELODIES,G?G.melody:0)):X.type===1?'Gong patterns follow the requested ringtone':'Audio melodies follow the requested ringtone';
 const PATTERNS=[['Ding-dong','One strike'],['Double','Two strikes'],['Triple','Three strikes'],['Long ring','One long strike, for bells'],['Insistent','Five quick strikes'],['Slow double','Two strikes with a longer gap'],['Slow triple','Three strikes with longer gaps'],['Four strikes','Four evenly spaced strikes'],['Two pairs','Two pairs of strikes'],['Three pairs','Three pairs of strikes']].map(([n,d],i)=>[`${i+1}. ${n}`,d]);
-let X=null,gongType=1,audioPick=0,patternPick=0;
+let X=null,gongType=1,audioPick=0,patternPick=0,overridePick=false;
 // Lists with previews (melodies, patterns) become a dropdown with a play button on phones.
-function cards(el,list,selected,onPick,onPlay){const box=$(el);box.classList.toggle('picklist',!!onPlay);
-box.innerHTML=(onPlay?`<div class="pickm"><div class="row"><select aria-label="Choose">${list.map(([n],i)=>`<option value="${i}"${i===selected?' selected':''}>${n}</option>`).join('')}</select><button class="ghost" data-mplay aria-label="Preview"><svg width="14" height="14"><use href="#i-play"/></svg></button></div><small></small></div>`:'')+list.map(([n,d],i)=>`<div class="choice${i===selected?' on':''}" data-i="${i}"><div><b>${n}</b><small>${d}</small></div><span class="spacer"></span>${onPlay?`<button class="small ghost" data-play="${i}" aria-label="Preview ${n}"><svg width="14" height="14"><use href="#i-play"/></svg></button>`:''}</div>`).join('');
-const choices=box.querySelectorAll('.choice'),pick=box.querySelector('.pickm select'),mark=i=>{for(const o of choices)o.classList.toggle('on',+o.dataset.i===i);if(pick){pick.value=i;box.querySelector('.pickm small').textContent=list[i]?list[i][1]:''}};
-for(const c of choices)c.onclick=e=>{const p=e.target.closest('[data-play]');if(p){onPlay(+p.dataset.play);return}if(onPick(+c.dataset.i)===false)return;mark(+c.dataset.i)};
-if(pick){mark(selected);let last=selected;pick.onchange=()=>{const i=+pick.value;if(onPick(i)===false){pick.value=last;return}last=i;mark(i)};box.querySelector('[data-mplay]').onclick=()=>onPlay(+pick.value)}}
+// Without onPick a list only previews: only its play buttons act and nothing is selected.
+function cards(el,list,selected,onPick,onPlay){const box=$(el);box.classList.toggle('picklist',!!onPlay);box.classList.toggle('previewlist',!onPick);
+box.innerHTML=(onPlay?`<div class="pickm"><div class="row"><select aria-label="Choose">${list.map(([n],i)=>`<option value="${i}"${i===selected?' selected':''}>${n}</option>`).join('')}</select><button class="ghost" data-mplay aria-label="Preview"><svg width="14" height="14"><use href="#i-play"/></svg></button></div><small></small></div>`:'')+list.map(([n,d],i)=>`<div class="choice${onPick&&i===selected?' on':''}" data-i="${i}"><div><b>${n}</b><small>${d}</small></div><span class="spacer"></span>${onPlay?`<button class="small ghost" data-play="${i}" aria-label="Preview ${n}"><svg width="14" height="14"><use href="#i-play"/></svg></button>`:''}</div>`).join('');
+const choices=box.querySelectorAll('.choice'),pick=box.querySelector('.pickm select'),mark=i=>{if(onPick)for(const o of choices)o.classList.toggle('on',+o.dataset.i===i);if(pick){pick.value=i;box.querySelector('.pickm small').textContent=(list[i]?list[i][1]:'')+(onPick?'':' · preview only')}};
+for(const c of choices)c.onclick=e=>{const p=e.target.closest('[data-play]');if(p){onPlay(+p.dataset.play);return}if(!onPick)return;if(onPick(+c.dataset.i)===false)return;mark(+c.dataset.i)};
+if(pick){mark(selected);let last=selected;pick.onchange=()=>{const i=+pick.value;if(onPick&&onPick(i)===false){pick.value=last;return}last=i;mark(i)};box.querySelector('[data-mplay]').onclick=()=>onPlay(+pick.value)}}
 const playMelody=(i,output=audioPick)=>act('/api/gong/test',{type:0,audio_output:output,melody:i,volume:Math.floor(+$('level').value*appVol/4),extra_relay:$('relay').checked,extra_relay_ms:+$('relayMs').value},'Playing preview');
 const playPattern=i=>act('/api/gong/test',{type:1,pattern:i,pulse_ms:+$('pulse').value,gap_ms:+$('gap').value},'Ringing the gong');
-function melodyCards(el,selected,onPick,output=audioPick){cards(el,MELODIES,selected,onPick,i=>playMelody(i,output))}
-function showType(){$('audioCards').classList.toggle('hidden',!isAudio(gongType));$('relayCards').classList.toggle('hidden',gongType!==1);$('noneCards').classList.toggle('hidden',gongType!==2);$('noRelay').classList.toggle('hidden',!X||X.relay_available);drawAudioOutput()}
-function loadSound(){if(!G||!C||!X)return;soundPick=G.melody;appVol=C.volume;gongType=X.type;audioPick=X.audio_output;patternPick=X.pattern;$('level').value=G.volume;$('levelOut').textContent=G.volume;$('led').checked=!!C.led;$('relay').checked=G.relay;$('relayMs').value=G.relay_ms;$('relayMsOut').textContent=G.relay_ms;$('relayMsField').classList.toggle('hidden',!G.relay);
+function showType(){$('audioOutputCard').classList.toggle('hidden',!isAudio(gongType));$('audioCards').classList.toggle('hidden',!isAudio(gongType));$('relayCards').classList.toggle('hidden',gongType!==1);$('noneCards').classList.toggle('hidden',gongType!==2);$('ringtoneCard').classList.toggle('hidden',gongType===2);$('melodies').classList.toggle('hidden',!isAudio(gongType));$('patterns').classList.toggle('hidden',gongType!==1);$('noRelay').classList.toggle('hidden',!X||X.relay_available);drawAudioOutput();ringtoneHint()}
+function ringtoneHint(){const audio=isAudio(gongType),what=audio?'melody':'pattern';$('ringtoneHint').textContent=(overridePick?`Every ring plays the selected ${what}. Tap ▶ to hear one. `:`Each ring plays the slot it requests: doorbell rings use the ringtone chosen in the Reolink app, plays without a requested sound (such as the BOOT button or Home Assistant's Play chime) use slot 1. Tap ▶ to hear a ${what}. `)+(audio?'The melodies are synthesized alternatives to the Reolink sounds and play through the selected PWM or DAC output.':'')}
+function loadSound(){if(!G||!C||!X)return;soundPick=G.melody;appVol=C.volume;gongType=X.type;audioPick=X.audio_output;patternPick=X.pattern;overridePick=!!X.override_ringtone;$('override').checked=overridePick;$('level').value=G.volume;$('levelOut').textContent=G.volume;$('led').checked=!!C.led;$('relay').checked=G.relay;$('relayMs').value=G.relay_ms;$('relayMsOut').textContent=G.relay_ms;$('relayMsField').classList.toggle('hidden',!G.relay);
 $('pulse').value=X.pulse_ms;$('pulseOut').textContent=X.pulse_ms;$('gap').value=X.gap_ms;$('gapOut').textContent=X.gap_ms;
 typeCards('gongTypes',gongType,i=>{if(i===gongType)return;if(!typeAvailable(i))return false;if(i===1&&isAudio(gongType))patternPick=soundPick;else if(isAudio(i)&&gongType===1)soundPick=patternPick;gongType=i;dirty=true;drawPicks();showType()});drawPicks();segVol();showType()}
 function drawAudioOutput(){audioOutputCards('audioOutputs',audioPick,i=>{audioPick=i;dirty=true;drawPicks();drawAudioOutput()});$('audioOutputHint').textContent=audioPick===1?'Uses the shared Audio output GPIO (25 or 26 only). Move or disable the Relay pin if it uses the same GPIO.':'Uses the shared Audio output GPIO. Configure it under Settings → Advanced → Wiring.'}
-function drawPicks(){melodyCards('melodies',soundPick,i=>{soundPick=i;dirty=true});cards('patterns',PATTERNS,patternPick,i=>{patternPick=i;dirty=true},playPattern)}
+function drawPicks(){cards('melodies',MELODIES,soundPick,overridePick&&(i=>{soundPick=i;dirty=true}),i=>playMelody(i));cards('patterns',PATTERNS,patternPick,overridePick&&(i=>{patternPick=i;dirty=true}),playPattern)}
+$('override').onchange=()=>{overridePick=$('override').checked;dirty=true;drawPicks();ringtoneHint()};
 function segVol(){$('appVolume').innerHTML=[0,1,2,3,4].map(v=>`<button type="button" class="${v===appVol?'on':''}">${v===0?'Mute':v}</button>`).join('');[...$('appVolume').children].forEach((b,v)=>b.onclick=()=>{appVol=v;dirty=true;segVol()})}
 for(const [id,out] of [['level','levelOut'],['relayMs','relayMsOut'],['pulse','pulseOut'],['gap','gapOut']])$(id).oninput=()=>{$(out).textContent=$(id).value;dirty=true};
 $('relay').onchange=()=>{$('relayMsField').classList.toggle('hidden',!$('relay').checked);dirty=true};$('led').onchange=()=>dirty=true;
 $('previewVolume').onclick=()=>playMelody(soundPick);
 $('soundReset').onclick=()=>{dirty=false;loadSound()};
-$('soundSave').onclick=async()=>{try{await api('/api/settings',{melody:soundPick,volume:+$('level').value,relay:$('relay').checked,relay_ms:+$('relayMs').value});await api('/api/gong',{type:gongType,audio_output:audioPick,pattern:patternPick,pulse_ms:+$('pulse').value,gap_ms:+$('gap').value});await api('/api/chime',{volume:appVol,led:$('led').checked});dirty=false;await loadSettings();await refresh();toast('Sound settings saved')}catch(e){toast(e.message,true)}};
-$('heroTest').onclick=()=>act('/api/gong/test',{},'Playing chime');$('heroSetup').onclick=()=>{show('settings');openSettingsFlow(1)};
+$('soundSave').onclick=async()=>{try{await api('/api/settings',{melody:soundPick,volume:+$('level').value,relay:$('relay').checked,relay_ms:+$('relayMs').value});await api('/api/gong',{type:gongType,audio_output:audioPick,override_ringtone:overridePick,pattern:patternPick,pulse_ms:+$('pulse').value,gap_ms:+$('gap').value});await api('/api/chime',{volume:appVol,led:$('led').checked});dirty=false;await loadSettings();await refresh();toast('Sound settings saved')}catch(e){toast(e.message,true)}};
+$('heroSetup').onclick=()=>{show('settings');openSettingsFlow(1)};
 // Settings
-async function loadSettings(){try{G=await api('/api/settings');X=await api('/api/gong');A=await api('/api/auth');I=await api('/api/integrations');W=await api('/api/wifi');if(!authDirty)fillAuth();if(!intDirty)fillIntegrations();if(!wmDirty)fillWifiMode();if(!pinsDirty&&(!P||activeTab==='settings'))await loadPins();$('rfHz').value=G.frequency_hz;rfBandSync();pBandSync();$('rfTrim').value=G.trim;$('rfAuto').checked=G.auto_trim;$('rfTrim').disabled=G.auto_trim;$('rfPol').value=G.polarity;$('rfMode').value=G.rx_mode;for(const [id,k] of [['mSource','source'],['mDest','destination'],['mPair','pair']])$(id).value=G[k];if(!dirty)loadSound()}catch(e){toast(e.message,true)}}
+async function loadSettings(){try{G=await api('/api/settings');X=await api('/api/gong');A=await api('/api/auth');I=await api('/api/integrations');W=await api('/api/wifi');if(!authDirty)fillAuth();if(!intDirty)fillIntegrations();if(!wmDirty)fillWifiMode();if(!pinsDirty&&(!P||activeTab==='settings'))await loadPins();if(!rfDirty)fillRadio();pBandSync();for(const [id,k] of [['mSource','source'],['mDest','destination'],['mPair','pair']])$(id).value=G[k];if(!dirty)loadSound()}catch(e){toast(e.message,true)}}
 $('cfgName').oninput=()=>$('cfgName').dataset.edited=1;
 $('cfgNameSave').onclick=async()=>{const n=$('cfgName').value.trim();if(!n)return toast('Enter a name',true);await act('/api/chime',{name:n},'Name saved. The Reolink app shows it after its next refresh.');delete $('cfgName').dataset.edited};
 $('cfgWifiChange').onclick=()=>openSettingsFlow(0);
@@ -444,14 +447,14 @@ for(const b of $('snav').children)b.classList.toggle('on',b.dataset.s===name);fo
 $('settingsView').classList.toggle('detail',detail);if(detail&&innerWidth<860)scrollTo(0,0);if(debugOpen()){renderDiag();pollDebug(true)}}
 // Debug is the last settings section; it polls the log and packets only while visible.
 const debugOpen=()=>activeTab==='settings'&&section==='debug'&&(innerWidth>=860||$('settingsView').classList.contains('detail'));
-for(const b of $('snav').children)b.onclick=()=>openSection(b.dataset.s);$('sBackList').onclick=()=>{closeSettingsFlow();$('settingsView').classList.remove('detail');scrollTo(0,0)};
+for(const b of $('snav').children)b.onclick=async()=>{if(b.dataset.s!==section&&!await confirmLeave())return;openSection(b.dataset.s)};$('sBackList').onclick=async()=>{if(!await confirmLeave())return;closeSettingsFlow();$('settingsView').classList.remove('detail');scrollTo(0,0)};
 function summaries(){if(!S||!C)return;const [lt]=linkState();$('sumGeneral').textContent=C.name;
 $('sumNetwork').textContent=S.wifi_connected?`${S.ssid} · ${S.ip}`:S.wifi_mode==='ap'?'Access point · '+S.ap_name:S.ap_active?'Setup hotspot':'Not connected';
 $('sumDoorbell').textContent=lt+(S.paired?' · '+S.doorbell_id:'');$('sumHa').textContent=S.mqtt==='off'?'Off':S.mqtt[0].toUpperCase()+S.mqtt.slice(1);
 $('sumSecurity').textContent=S.auth_enabled?'On':'Off · anyone on your network';$('sumSystem').textContent='Version '+(S.version||'unknown');
 $('sumDebug').textContent=`Radio ${S.radio_ok?'OK':'error'} · ${S.packets} packets`}
 // Sign-in
-let A=null,I=null,W=null,authDirty=false,intDirty=false,wmDirty=false,wmPick='client';
+let A=null,I=null,W=null,authDirty=false,intDirty=false,ntpDirty=false,rfDirty=false,wmDirty=false,wmPick='client';
 function fillAuth(){if(!A)return;$('authOn').checked=A.enabled;$('authUser').value=A.username;$('authPass').value='';$('authPass2').value='';$('authPassLabel').textContent=A.password_set?'New password (leave empty to keep the current one)':'Password (8–63 characters)';
 $('authState').textContent=A.enabled?'On: this page asks for a user name and password':'Off: anyone on your network can open this page';$('sessionCard').classList.toggle('hidden',!A.enabled);authFieldsView()}
 const authFieldsView=()=>$('authFields').classList.toggle('hidden',!$('authOn').checked);$('authOn').addEventListener('change',authFieldsView);
@@ -482,13 +485,14 @@ const mqPill=st=>`<span class="dot ${st==='connected'?'ok':st==='off'?'':st==='c
 function fillIntegrations(){if(!I)return;$('mqOn').checked=I.enabled;$('mqHost').value=I.host;$('mqPort').value=I.port;$('mqUser').value=I.username;$('mqPass').value='';$('mqForget').checked=false;$('mqForgetRow').classList.toggle('hidden',!I.password_set);
 $('mqPassLabel').textContent=I.password_set?'Password (leave empty to keep the saved one)':'Password';$('mqTopic').value=I.topic;$('mqTopic').placeholder=I.default_topic;$('mqDisc').checked=I.discovery;$('mqPrefix').value=I.prefix;$('mqPrefixField').classList.toggle('hidden',!I.discovery);$('ntp').value=I.ntp;$('mqState').innerHTML=mqPill(I.state);mqFieldsView()}
 const mqFieldsView=()=>$('mqFields').classList.toggle('hidden',!$('mqOn').checked);$('mqOn').addEventListener('change',mqFieldsView);
-for(const id of ['mqOn','mqHost','mqPort','mqUser','mqPass','mqForget','mqTopic','mqDisc','mqPrefix','ntp'])$(id).addEventListener('input',()=>{intDirty=true;$('mqPrefixField').classList.toggle('hidden',!$('mqDisc').checked)});
-async function saveIntegrations(body){try{const r=await api('/api/integrations',body);intDirty=false;I=await api('/api/integrations');fillIntegrations();toast(r.message)}catch(e){toast(e.message,true)}}
+$('ntp').addEventListener('input',()=>ntpDirty=true);
+for(const id of ['mqOn','mqHost','mqPort','mqUser','mqPass','mqForget','mqTopic','mqDisc','mqPrefix'])$(id).addEventListener('input',()=>{intDirty=true;$('mqPrefixField').classList.toggle('hidden',!$('mqDisc').checked)});
+async function saveIntegrations(body){try{const r=await api('/api/integrations',body);intDirty=ntpDirty=false;I=await api('/api/integrations');fillIntegrations();toast(r.message)}catch(e){toast(e.message,true)}}
 $('mqSave').onclick=()=>{const b={enabled:$('mqOn').checked,host:$('mqHost').value.trim(),port:+$('mqPort').value,username:$('mqUser').value,topic:$('mqTopic').value.trim(),discovery:$('mqDisc').checked,prefix:$('mqPrefix').value.trim()};
 if(b.enabled&&!b.host)return toast('Enter the broker address',true);if($('mqPass').value)b.password=$('mqPass').value;if($('mqForget').checked)b.clear_password=true;saveIntegrations(b)};
 $('ntpSave').onclick=()=>saveIntegrations({ntp:$('ntp').value.trim()});
 // Ring log
-let R=null,ringSeq=-1,ringFilter='all';try{ringFilter=localStorage.getItem('ringFilter')||'all'}catch(e){}
+let R=null,ringSeq=-1,ringFilter='doorbell';try{ringFilter=localStorage.getItem('ringFilter')||'doorbell'}catch(e){}
 const SOURCES={doorbell:'Doorbell',web:'Played from this page',button:'Button test',mqtt:'Played via MQTT',serial:'Serial console test'};
 const OUTCOMES={played:'Played',muted:'Volume 0',silent:'Silent',busy:'Busy',chime_muted:'Muted'};
 async function loadRings(){try{const r=await api('/api/rings');R=r;ringSeq=r.last_id;drawRings()}catch(e){}}
@@ -503,10 +507,11 @@ $('rings').innerHTML=list.length?list.map(r=>{const d=r.source==='doorbell',t=ri
 for(const b of $('ringFilter').children)b.onclick=()=>{ringFilter=b.dataset.f;try{localStorage.setItem('ringFilter',ringFilter)}catch(e){}drawRings()};
 $('ringClear').onclick=async()=>{if(!await ask({title:'Clear the ring log?',text:'All entries are deleted. This cannot be undone.',ok:'Clear',danger:true}))return;await act('/api/rings/clear',{},'Ring log cleared');loadRings()};
 $('cfgReboot').onclick=async()=>{if(await ask({title:'Restart the chime?',text:'It is back after a few seconds and reconnects to the doorbell by itself.',ok:'Restart'}))restartChime()};
-$('rfAuto').onchange=()=>{$('rfTrim').disabled=$('rfAuto').checked};
+function fillRadio(){$('rfHz').value=G.frequency_hz;rfBandSync();$('rfTrim').value=G.trim;$('rfAuto').checked=G.auto_trim;$('rfTrim').disabled=G.auto_trim;$('rfPol').value=G.polarity;$('rfMode').value=G.rx_mode}
+$('rfAuto').onchange=()=>{$('rfTrim').disabled=$('rfAuto').checked};for(const id of ['rfBand','rfHz','rfTrim','rfAuto','rfMode','rfPol'])$(id).addEventListener('input',()=>rfDirty=true);
 function rfBandSync(){const hz=+$('rfHz').value,o=[...$('rfBand').options].find(x=>x.value&&+x.value===hz);$('rfBand').value=o?o.value:'';$('rfUntested').classList.toggle('hidden',!(hz>=902e6&&hz<=928e6))}
 $('rfBand').onchange=()=>{if($('rfBand').value)$('rfHz').value=$('rfBand').value;rfBandSync()};$('rfHz').oninput=rfBandSync;
-$('rfSave').onclick=()=>act('/api/settings',{frequency_hz:+$('rfHz').value,trim:+$('rfTrim').value,polarity:+$('rfPol').value,auto_trim:$('rfAuto').checked,rx_mode:+$('rfMode').value},'Radio settings saved');
+$('rfSave').onclick=async()=>{if(await act('/api/settings',{frequency_hz:+$('rfHz').value,trim:+$('rfTrim').value,polarity:+$('rfPol').value,auto_trim:$('rfAuto').checked,rx_mode:+$('rfMode').value},'Radio settings saved')){rfDirty=false;loadSettings()}};
 $('fwUpload').onclick=async()=>{const f=$('fwFile').files[0];if(!f)return notify('No file chosen','Choose the firmware.bin file first.',{icon:'warn'});
 let v;try{v=await fileVersion(f)}catch(e){return notify('File not readable',e.message,{icon:'warn'})}
 if(v===false)return notify('Not a firmware file',`${f.name} is not an ESP32 firmware image. Choose firmware/dist/firmware.bin.`,{icon:'warn'});
@@ -540,7 +545,7 @@ function openSettingsFlow(step){if(initialSetup())return;closeSettingsFlow();ope
 // Setup wizard
 function wizard(step,passive){wizStep=step;for(let i=0;i<5;i++){$('wiz'+i).classList.toggle('hidden',i!==step);$('steps').children[i].className=i<step?'done':i===step?'on':''}
 if(step===0&&!passive){scan();const w=$('wifiNow');const ap=S&&S.wifi_mode==='ap';w.classList.toggle('hidden',!S||!S.wifi_connected&&!ap);if(ap)w.innerHTML=`The chime runs its own access point <b>${esc(S.ap_name)}</b>. Connecting to a network switches it to client mode.`;else if(S&&S.wifi_connected)w.innerHTML=`Connected to <b>${esc(S.ssid)}</b> (${S.ip}). Choose another network or press ${settingsStep===0?'Done':'Next'}.`}
-if(step===0)wifiView();if(step===1)pairView();if(step===2&&!passive){$('sName').value=C?C.name:'';wizMelody=G?G.melody:0;wizPattern=X?X.pattern:0;wizType=X?X.type:1;wizAudioPick=X?X.audio_output:0;wizAudioPin=P&&P.saved.audio>=0?P.saved.audio:25;wizRelayPin=P&&P.saved.relay>=0?P.saved.relay:26;wizRelayLow=!!(P&&P.saved.relay_active_low);wizExtraRelay=!!(G&&G.relay);wizReviewBody=null;wizReviewPins=null;wizSetupSaved=false;wizAuthInitialized=false;wizReviewAuth=null;wizSounds()}
+if(step===0)wifiView();if(step===1)pairView();if(step===2&&!passive){$('sName').value=C?C.name:'';wizType=X?X.type:1;wizAudioPick=X?X.audio_output:0;wizAudioPin=P&&P.saved.audio>=0?P.saved.audio:25;wizRelayPin=P&&P.saved.relay>=0?P.saved.relay:26;wizRelayLow=!!(P&&P.saved.relay_active_low);wizExtraRelay=!!(G&&G.relay);wizReviewBody=null;wizReviewPins=null;wizSetupSaved=false;wizAuthInitialized=false;wizReviewAuth=null;wizSounds()}
 if(step===3&&!passive)wizardAuth();if(step===4&&!passive)doneView()}
 async function scan(again){clearTimeout(scanTimer);try{const r=await api('/api/wifi/scan'+(again?'?refresh=1':''));if(r.scanning){if(again||!$('networks').dataset.ok)$('networks').innerHTML='<button disabled>Scanning…</button>';scanTimer=setTimeout(scan,1500);return}
 $('networks').dataset.ok=1;$('networks').innerHTML=r.networks.length?r.networks.map(n=>`<button data-ssid="${esc(n.ssid)}">${n.secure?'🔒':'🔓'} ${esc(n.ssid)} ${bars(n.rssi)}</button>`).join(''):'<button disabled>No networks found</button>';
@@ -563,20 +568,20 @@ let pBandBusy=false;$('pBand').onchange=async()=>{const hz=+$('pBand').value;if(
 $('pStart').onclick=async()=>{try{await api('/api/pair/start',{});pairStarted=Date.now();refresh()}catch(e){toast(e.message,true)}};
 $('pCancel').onclick=async()=>{pairStarted=0;await act('/api/pair/cancel',{},'Pairing cancelled')};$('pBack').onclick=()=>wizard(0);$('pNext').onclick=()=>settingsStep===1?closeSettingsFlow():wizard(2);
 $('dbgPair').onclick=async()=>{await act('/api/pair/start');pairStarted=Date.now()};$('dbgCancel').onclick=()=>act('/api/pair/cancel');$('dbgTest').onclick=()=>act('/api/gong/test',{});
-// Switching mode preserves the numbered doorbell sound slot.
-let wizType=1,wizMelody=0,wizPattern=0,wizAudioPick=0,wizAudioPin=25,wizRelayPin=26,wizRelayLow=false,wizExtraRelay=false;
+let wizType=1,wizAudioPick=0,wizAudioPin=25,wizRelayPin=26,wizRelayLow=false,wizExtraRelay=false;
 let wizReviewBody=null,wizReviewPins=null,wizSetupSaved=false;
 let wizReviewAuth=null,wizAuthInitialized=false;
 let wizWireOk=false,wizWireBusy=false,wizWireVersion=0,wizWireTimer=0;
 const sameWiring=(a,b)=>!!a&&!!b&&Object.keys(a).every(k=>a[k]===b[k]);
 function wizardPinMap(){const map={...(P?P.saved:{})};if(wizType===1){map.relay=wizRelayPin;map.relay_active_low=wizRelayLow;if(map.audio===map.relay)map.audio=-1}
 if(wizType===0){map.audio=wizAudioPin;if(wizExtraRelay){map.relay=wizRelayPin;map.relay_active_low=wizRelayLow}else if(map.relay===map.audio)map.relay=-1}return map}
-function wizardSoundBody(){const map=wizardPinMap();return{chime:{name:$('sName').value.trim()||(C?C.name:'Reolink Chime'),type:wizType,audio_output:wizAudioPick,melody:wizMelody,pattern:wizPattern,extra_relay:wizType===0?wizExtraRelay:!!(G&&G.relay)},pins:{audio:map.audio,relay:map.relay,relay_active_low:map.relay_active_low}}}
+function wizardSoundBody(){const map=wizardPinMap();return{chime:{name:$('sName').value.trim()||(C?C.name:'Reolink Chime'),type:wizType,audio_output:wizAudioPick,extra_relay:wizType===0?wizExtraRelay:!!(G&&G.relay)},pins:{audio:map.audio,relay:map.relay,relay_active_low:map.relay_active_low}}}
 function wizardPreviewReady(){return wizWireOk&&!wizWireBusy&&P&&sameWiring(wizardPinMap(),P.pins)}
-function wizardPreview(sound){if(!wizardPreviewReady())return toast('Finish setup on the last step to apply this wiring before testing sound.',true);
-const body=wizType===1?{type:1,pattern:sound,pulse_ms:X.pulse_ms,gap_ms:X.gap_ms}:{type:0,audio_output:wizAudioPick,melody:sound,volume:Math.floor(G.volume*C.volume/4),extra_relay:wizExtraRelay,extra_relay_ms:G.relay_ms};
+// Plays like a ring without a requested sound would with the chosen output: slot 1 unless the ringtone is overridden.
+function wizardPreview(){if(!wizardPreviewReady())return toast('Finish setup on the last step to apply this wiring before testing sound.',true);
+const body=wizType===1?{type:1,pulse_ms:X.pulse_ms,gap_ms:X.gap_ms}:{type:0,audio_output:wizAudioPick,volume:Math.floor(G.volume*C.volume/4),extra_relay:wizExtraRelay,extra_relay_ms:G.relay_ms};
 return act('/api/gong/test',body,'Playing preview')}
-function wizardWireState(){$('sNext').disabled=wizWireBusy||!wizWireOk;$('sNext').textContent='Next';for(const b of $('melodies2').querySelectorAll('[data-play],[data-mplay]'))b.disabled=!wizardPreviewReady()}
+function wizardWireState(){$('sNext').disabled=wizWireBusy||!wizWireOk;$('sNext').textContent='Next'}
 function wizardWireCheck(){const version=++wizWireVersion;clearTimeout(wizWireTimer);wizWireBusy=true;wizWireOk=false;wizardWireState();wizWireTimer=setTimeout(async()=>{try{
 const r=await api('/api/setup/sound/check',wizardSoundBody());if(version!==wizWireVersion)return;wizWireOk=r.ok;
 $('wizWireIssues').innerHTML=r.issues.filter(i=>i.level!=='info').map(i=>`<div class="issue ${i.level}"><span>${esc(i.role)}: ${esc(i.text)}</span></div>`).join('');
@@ -590,11 +595,8 @@ $('wizWireHint').textContent=audio?'Connect this GPIO to your amplifier input. '
 const map=wizardPinMap(),freed=P&&['audio','relay'].find(role=>P.saved[role]>=0&&map[role]===-1);
 $('wizWireNote').textContent=(freed?`The unused ${freed==='audio'?'Audio output':'Relay'} assignment will be disconnected to free this GPIO. `:'')+'GPIO changes apply when you finish the last setup step, without a restart. Disconnect power before moving wires.';
 wizardWireCheck()}
-function wizSounds(){typeCards('wizTypes',wizType,i=>{if(i===wizType)return;
-if(i===1&&isAudio(wizType))wizPattern=wizMelody;else if(isAudio(i)&&wizType===1)wizMelody=wizPattern;wizType=i;setTimeout(wizSounds)});
+function wizSounds(){typeCards('wizTypes',wizType,i=>{if(i===wizType)return;wizType=i;setTimeout(wizSounds)});
 $('wizAudioField').classList.toggle('hidden',!isAudio(wizType));audioOutputCards('wizAudioOutputs',wizAudioPick,i=>{wizAudioPick=i;if(i===1&&![25,26].includes(wizAudioPin))wizAudioPin=25;setTimeout(wizSounds)},true);
-$('wizSoundLabel').textContent=wizType===1?'Strike pattern':'Melody';$('wizSoundField').classList.toggle('hidden',wizType===2);
-if(wizType===1)cards('melodies2',PATTERNS,wizPattern,i=>{wizPattern=i;wizardWireCheck()},wizardPreview);else if(isAudio(wizType))cards('melodies2',MELODIES,wizMelody,i=>{wizMelody=i;wizardWireCheck()},wizardPreview);
 drawWizardWiring()}
 $('wizAudioPin').onchange=()=>{wizAudioPin=+$('wizAudioPin').value;drawWizardWiring()};$('wizRelayPin').onchange=()=>{wizRelayPin=+$('wizRelayPin').value;drawWizardWiring()};$('wizRelayLow').onchange=()=>{wizRelayLow=$('wizRelayLow').value==='1';drawWizardWiring()};$('wizExtraRelay').onchange=()=>{wizExtraRelay=$('wizExtraRelay').checked;drawWizardWiring()};$('sName').oninput=wizardWireCheck;
 $('sBack').onclick=()=>wizard(1);$('sNext').onclick=()=>{if(!wizWireOk||wizWireBusy)return;wizReviewBody=wizardSoundBody();wizReviewPins=wizardPinMap();wizSetupSaved=false;wizard(3)};
@@ -626,13 +628,14 @@ if(S.ap_active&&S.wifi_connected&&await ask({title:'Switch off the setup hotspot
 function doneView(){const pending=!!wizReviewBody,cfg=pending?wizReviewBody.chime:null,map=pending?wizReviewPins:P&&P.pins,type=cfg?cfg.type:X?X.type:1,output=cfg?cfg.audio_output:X?X.audio_output:0;
 const signIn=pending&&wizReviewAuth?wizReviewAuth.enabled:!!(A&&A.enabled),user=pending&&wizReviewAuth&&wizReviewAuth.username?wizReviewAuth.username:A?A.username:'admin';
 const rows=[['Name',cfg?cfg.name:C.name],['Sign-in',signIn?'On · '+user:'Off'],['Sound mode',TYPES[type][0]+(type===0?' · '+OUTPUTS[output][0]:'')],['WiFi',S.wifi_connected?`${S.ssid} (${S.ip})`:'Not connected'],['Doorbell',S.joined?`Linked (${S.doorbell_id})`:S.paired?'Paired, not connected':'Not paired']];
-if(type===1)rows.push(['Gong pattern',PATTERNS[cfg?cfg.pattern:X.pattern][0]],['Relay GPIO',map?'GPIO'+map.relay:'—'],['Relay level',map&&map.relay_active_low?'Active low':'Active high']);
-else if(type===0){rows.push(['Melody',MELODIES[cfg?cfg.melody:G.melody][0]],['Audio output GPIO',map?'GPIO'+map.audio:'—']);if(cfg?cfg.extra_relay:G.relay)rows.push(['Extra relay GPIO',map?'GPIO'+map.relay:'—'])}else rows.push(['Sound','None (silent)']);rows.push(['Address','http://'+S.hostname]);kv('doneSummary',rows);
+if(type!==2)rows.push(['Ringtone',X.override_ringtone?'Always '+(type===1?soundName(PATTERNS,X.pattern):soundName(MELODIES,G.melody)):'As requested by the doorbell']);
+if(type===1)rows.push(['Relay GPIO',map?'GPIO'+map.relay:'—'],['Relay level',map&&map.relay_active_low?'Active low':'Active high']);
+else if(type===0){rows.push(['Audio output GPIO',map?'GPIO'+map.audio:'—']);if(cfg?cfg.extra_relay:G.relay)rows.push(['Extra relay GPIO',map?'GPIO'+map.relay:'—'])}else rows.push(['Sound','None (silent)']);rows.push(['Address','http://'+S.hostname]);kv('doneSummary',rows);
 const wiringChanged=pending&&P&&!sameWiring(wizReviewPins,P.pins);
 $('doneWiring').classList.toggle('hidden',!wiringChanged);$('doneWiring').textContent='Finish saves and applies your GPIO changes without restarting. Sound testing becomes available immediately.';
 $('dTestRow').classList.toggle('hidden',type===2);$('dTest').disabled=pending?!wizardPreviewReady():!!P&&!sameWiring(P.saved,P.pins);
 $('doneAuth').classList.toggle('hidden',signIn)}
-$('dTest').onclick=()=>wizReviewBody?wizardPreview(wizType===1?wizPattern:wizMelody):act('/api/gong/test',{},'Playing chime');
+$('dTest').onclick=()=>wizReviewBody?wizardPreview():act('/api/gong/test',{},'Playing chime');
 $('dBack').onclick=()=>{if(wizReviewBody)wizard(3);else wizard(2)};$('dHome').onclick=finishSetup;$('doneAuthLink').onclick=e=>{e.preventDefault();wizard(3)}
 // Debug
 function renderDiag(){if(!S)return;const d=[['Radio',S.radio_ok?'OK':'Error'],['Chip',`CC1101 v${S.radio_version}`],['State',S.marcstate===13?'Receiving':'0x'+S.marcstate.toString(16)],['Noise',S.rssi_dbm.toFixed(1)+' dBm'],['Receiver',S.rx_mode===1?'ESP32 bit sampling':'CC1101 packet engine'],['Frequency',(S.rf_frequency_hz/1e6).toFixed(4)+' MHz'],['Trim',`${S.rf_trim>0?'+':''}${S.rf_trim} (${!S.auto_trim?'manual':S.rx_mode===1?'automatic, paused in ESP32 mode':S.trim_calibrated?'automatic':'automatic, measuring'}) · ${S.rx_bandwidth_khz} kHz bandwidth`],['TX polarity',S.tx_polarity],['Packets',S.packets],['Good CRC',S.crc_ti],['Bad CRC',S.crc_bad],['Dropped frames',S.dropped],['Invalid lengths',S.invalid_lengths],['False syncs',S.false_syncs],['Sent',`${S.transmitted} (${S.transmit_errors} errors)`],['Radio resets',S.radio_resets],['Link',S.pairing],['Free memory',Math.round(S.free_heap/1024)+' KB'],['Storage',S.storage_ok?'OK':'Write failed'],['MQTT',S.mqtt],['Clock',S.time_synced?'Synchronised':'Not set'],['Sign-in',S.auth_enabled?'On':'Off']];
@@ -647,12 +650,28 @@ const p=await api('/api/packets');$('packets').innerHTML=p.packets.slice().rever
 $('logDiag').onchange=drawLog;$('logClear').onclick=()=>{logText='';drawLog()};
 $('logDownload').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([logText],{type:'text/plain'}));a.download='chime-log.txt';a.click()};
 $('mSave').onclick=async()=>{if(!await ask({title:'Replace the pairing?',text:'The paired profile is replaced by this passive receive profile. The chime then only listens and cannot rejoin until you pair it again.',ok:'Replace',danger:true}))return;act('/api/settings',{source:$('mSource').value,destination:$('mDest').value,pair:$('mPair').value,key:$('mKey').value},'Profile saved')};
+// Unsaved changes: leaving a page with edited forms asks first; reloading or
+// closing the browser tab shows the browser's own warning.
+const FORMS=[
+{tab:'sound',name:'the sound settings',dirty:()=>dirty,discard:()=>{dirty=false;loadSound()}},
+{sec:'general',name:'the chime name',dirty:()=>!!C&&!!$('cfgName').dataset.edited&&$('cfgName').value.trim()!==C.name,discard:()=>{delete $('cfgName').dataset.edited;$('cfgName').value=C.name}},
+{sec:'network',name:'the WiFi mode',dirty:()=>wmDirty,discard:()=>{wmDirty=false;fillWifiMode()}},
+{sec:'network',name:'the time server',dirty:()=>ntpDirty,discard:()=>{ntpDirty=false;if(I)$('ntp').value=I.ntp}},
+{sec:'ha',name:'the MQTT settings',dirty:()=>intDirty,discard:()=>{const ntp=$('ntp').value;intDirty=false;fillIntegrations();$('ntp').value=ntp}},
+{sec:'security',name:'the sign-in settings',dirty:()=>authDirty,discard:()=>{authDirty=false;fillAuth()}},
+{sec:'advanced',name:'the radio settings',dirty:()=>rfDirty,discard:()=>{rfDirty=false;if(G)fillRadio()}},
+{sec:'advanced',name:'the GPIO wiring',dirty:()=>pinsDirty,discard:()=>{pinsDirty=false;if(P){drawPins(P.saved);checkPins()}}}];
+async function confirmLeave(){const open=FORMS.filter(f=>(activeTab==='settings'?f.sec===section:f.tab===activeTab)&&f.dirty());if(!open.length)return true;
+const names=open.map(f=>f.name),list=names.length>1?names.slice(0,-1).join(', ')+' and '+names.at(-1):names[0];
+if(!await ask({title:'Discard unsaved changes?',text:`Your changes to ${list} are not saved yet. Keep editing to save them, or discard them and continue.`,ok:'Discard changes',cancel:'Keep editing',danger:true}))return false;
+for(const f of open)f.discard();return true}
+addEventListener('beforeunload',e=>{if(FORMS.some(f=>f.dirty())){e.preventDefault();e.returnValue=''}});
 // Start
 // Auto refresh: status every 2 s, settings every 10 s unless the user is
 // editing. One request chain at a time keeps the ESP32 web server responsive;
 // hidden browser tabs pause polling entirely.
 let ticks=0,lastUp=0,ticking=false;
-const editing=()=>{const a=document.activeElement;return dirty||pinsDirty||authDirty||intDirty||wmDirty||(a&&['INPUT','SELECT','TEXTAREA'].includes(a.tagName))};
+const editing=()=>{const a=document.activeElement;return dirty||pinsDirty||authDirty||intDirty||ntpDirty||rfDirty||wmDirty||(a&&['INPUT','SELECT','TEXTAREA'].includes(a.tagName))};
 async function tick(){if(document.hidden||ticking||restarting)return;ticking=true;try{await refresh();if(S){const restarted=lastUp&&S.uptime_ms<lastUp;lastUp=S.uptime_ms;
 if(restarted){toast('The chime restarted');logNext=0;logText='';await loadSettings();render()}else if(++ticks%5===0&&!editing()){await loadSettings();render()}}await pollDebug()}finally{ticking=false}}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick()});

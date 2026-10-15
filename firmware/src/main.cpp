@@ -31,6 +31,9 @@ chime::WifiConfig wifiConfig;
 chime::WifiMode wifiMode = chime::WifiMode::Client;
 bool storageOk = false, otaStarted = false, apActive = false;
 uint32_t restartAt = 0, stationStarted = 0;
+// Station disconnects, recorded by the WiFi event task and logged from loop().
+volatile uint8_t wifiDropReason = 0;
+volatile uint32_t wifiDrops = 0;
 String apName, deviceId;
 
 namespace {
@@ -149,6 +152,9 @@ void setup() {
     pins.audio, pins.relay, pins.relayActiveLow ? "low" : "high", pins.led, pins.button);
   loadWifiConfig(wifiConfig); wifiMode = wifiConfig.mode;
   WiFi.persistent(false); WiFi.setHostname("reolink-chime");
+  WiFi.onEvent([](WiFiEvent_t, WiFiEventInfo_t info) {
+    wifiDropReason = info.wifi_sta_disconnected.reason; ++wifiDrops;
+  }, ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
   if (wifiMode == chime::WifiMode::Off) {
     WiFi.mode(WIFI_OFF);
     logf("WiFi is off. Hold the button 8 s (or send 'w' here) to turn it on with the setup hotspot.\n");
@@ -181,8 +187,27 @@ void loop() {
     logf("WiFi connected: %s, IP %s, http://reolink-chime.local/\n", WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
   } else if (!connected && wasConnected) logf("WiFi disconnected\n");
   wasConnected = connected;
+  static uint32_t loggedDrops = 0, dropLoggedAt = 0, retryAt = 0;
+  static uint8_t loggedReason = 0;
+  if (wifiDrops != loggedDrops && (wifiDropReason != loggedReason || uint32_t(millis()-dropLoggedAt) > 60000)) {
+    loggedReason = wifiDropReason; dropLoggedAt = millis();
+    logf("[wifi] station disconnected: reason %u %s (%u total)\n", loggedReason,
+      WiFi.disconnectReasonName(wifi_err_reason_t(loggedReason)), unsigned(wifiDrops));
+    loggedDrops = wifiDrops;
+  }
   if (connected) stationStarted=millis();
   else if (wifiMode == chime::WifiMode::Client && !apActive && uint32_t(millis()-stationStarted)>20000) startAp();
+  // The core's auto-reconnect gives up for good after some failures (e.g.
+  // AUTH_FAIL while a router briefly rejects the chime), so retry the saved
+  // network every 30 s. Skipped while a phone uses the setup hotspot, because
+  // a station scan disturbs the hotspot.
+  if (!connected && wifiMode == chime::WifiMode::Client && settings.ssid[0] &&
+      uint32_t(millis()-stationStarted) > 30000 && uint32_t(millis()-retryAt) > 30000 &&
+      !(apActive && WiFi.softAPgetStationNum())) {
+    retryAt = millis();
+    logf("[wifi] retrying %s (status %d)\n", settings.ssid, int(WiFi.status()));
+    WiFi.disconnect(); WiFi.begin(settings.ssid, settings.wifiPassword);
+  }
   serviceMute();
   serviceMqtt();
   serviceRingLog();

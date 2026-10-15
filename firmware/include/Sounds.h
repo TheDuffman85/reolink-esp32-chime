@@ -7,12 +7,15 @@ namespace chime {
 constexpr uint8_t DoorbellSounds = 10;
 constexpr uint8_t Melodies = DoorbellSounds, Patterns = DoorbellSounds;
 
-// Select per ring: the doorbell can use different sounds for different events.
-// Do not overwrite local defaults or write flash on every ring. Validate the
-// full u16 before narrowing; an unknown ID must never wrap to a known sound.
-inline bool doorbellSound(uint16_t id, uint8_t &melody, uint8_t &pattern) {
-  if (id >= DoorbellSounds) return false;
-  melody = pattern = uint8_t(id);
+// Every trigger requests a sound slot: the doorbell its music ID (it can use
+// different sounds for different events), MQTT/API an optional "sound" and
+// local tests slot 0. The slot selects both the melody and the pattern unless
+// the owner overrides the ringtone; then the saved choices stay. Never write
+// flash per ring. Validate the full u16 before narrowing; an unknown ID must
+// never wrap to a known sound, even while overriding.
+inline bool selectSound(uint16_t slot, bool override, uint8_t &melody, uint8_t &pattern) {
+  if (slot >= DoorbellSounds) return false;
+  if (!override) melody = pattern = uint8_t(slot);
   return true;
 }
 

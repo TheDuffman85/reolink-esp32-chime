@@ -276,8 +276,9 @@ Opcode `09` means ring. Byte +1 is unspecified and must not be required to
 equal zero. Bytes +2/+3 contain a music/ringtone parameter; they are neither
 padding nor an ACK field. The ESP32 accepts IDs 0–9 and selects the corresponding
 local melody or relay pattern for that ring, retaining the configured output
-mode, level, timings and app volume. It records both the ID and the selected
-sound. Local test/MQTT defaults are unchanged by received rings.
+mode, level, timings and app volume. With the owner's ringtone override on, it
+plays the saved melody/pattern instead. It records both the ID and the played
+sound. Received rings never change saved settings.
 
 The vendor playback table has ten entries. Although its opcode-9 handler
 admits ID 10, that lookup reads a byte of the following pointer array; the ESP32

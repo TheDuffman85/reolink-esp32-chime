@@ -24,6 +24,8 @@ extern const char *const PatternNames[Patterns];
 struct ChimeState {
   uint8_t type = 1, audioOutput = 0, melody = 0, level = 35, volume = 4, pattern = 0;
   bool led = true, extraRelay = false;
+  // Off: every ring plays the slot it requests. On: always melody/pattern.
+  bool overrideRingtone = false;
   uint16_t extraRelayMs = 300, pulseMs = 300, gapMs = 700;
   char name[33] = "Reolink Chime";
   // Mute: permanent (saved) or for muteMinutes (runtime); never both.
@@ -48,4 +50,6 @@ void writeChime(const ChimeState &state, JsonObject out);
 bool chimeField(const char *field, const char *payload, size_t length, JsonDocument &out);
 // Index of an enumeration name/index in `names`, or -1.
 int chimeEnum(JsonVariantConst value, const char *const *names, uint8_t count);
+// Sound slot 0..9 from an index or a melody or pattern name, or -1.
+int soundSlot(JsonVariantConst value);
 }

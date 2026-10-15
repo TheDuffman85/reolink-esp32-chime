@@ -180,7 +180,7 @@ unfinished; older paired installations without a visibility preference stay comp
 Secrets are in ordinary NVS; settings GETs omit passwords/keys. Gong is the default for new
 configurations. Public modes are 0 Audio, 1 Gong and 2 None; Audio has a separate
 method (0 PWM, 1 DAC) in the `gongx/audioout` NVS key, remembered across mode
-changes. Legacy type 0 migrates to Audio/PWM and type 3 to Audio/DAC. Ring history
+changes. The ringtone override is `gongx/override` (absent means off). Legacy type 0 migrates to Audio/PWM and type 3 to Audio/DAC. Ring history
 retains its compact legacy backend IDs internally and exposes the new mode plus
 Audio method in JSON. The Audio output GPIO retains the former tone-output slot
 in the ten-byte pin map. Ring history writes after three seconds of
@@ -196,9 +196,10 @@ existing sleep-disabled upload behavior; a failed/aborted update uses the same
 idle timeout. This trades higher WiFi power consumption during web use for
 faster responses, without changing the CPU clock or RF receive/playback timing.
 
-`Sounds.h` defines ten synthesized melodies and ten relay patterns, selected per
-doorbell ring by music ID 0–9. Received IDs do not write NVS or replace local
-test/MQTT defaults. Existing sound indices and blob layouts are retained. The
+`Sounds.h` defines ten synthesized melodies and ten relay patterns. Every
+trigger requests a slot 0–9 (doorbell music ID, MQTT/API `sound`, otherwise 0);
+`selectSound()` plays it unless the ringtone override keeps the saved choice.
+Received IDs never write NVS. Existing sound indices and blob layouts are retained. The
 [vendor sound audit](docs/vendor-sounds.md) explains the ten-entry table,
 rejection of ID 10 and why original audio cannot be extracted from this controller.
 

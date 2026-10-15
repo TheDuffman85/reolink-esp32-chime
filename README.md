@@ -19,11 +19,11 @@ timing still need hardware verification.
 
 - Normal Reolink pairing with an individual AES key; saved credentials and automatic rejoin.
 - Ten PWM/DAC melodies and ten relay patterns, matching Reolink's ten ringtone slots.
-- Doorbell rings automatically follow the ringtone selected for that event in Reolink.
+- Every ring plays the ringtone it requests (Reolink app, MQTT or API), or one fixed sound when overridden.
 - Silent mode, permanent/timed mute, optional extra relay pulse and configurable LED.
 - Mobile-friendly web UI, light/dark/system theme and optional sign-in.
 - 2.4 GHz WiFi onboarding, standalone access point and WiFi-off operation.
-- MQTT commands, events, retained state and 22 Home Assistant discovery entities.
+- MQTT commands, events, retained state and 23 Home Assistant discovery entities.
 - Last 50 ring events persisted locally, RF packet history and downloadable text diagnostics.
 - Configurable GPIOs, automatic frequency trim, two RF receivers and web OTA.
 - PlatformIO build, portable host tests and protocol fuzzing tools.
@@ -214,8 +214,8 @@ physical press when verifying reception.
 
 | Area | Controls |
 |---|---|
-| Home | Readiness, WiFi/link state, Mute, Play chime, filtered ring history and clear |
-| Sound | Gong (default) / Audio / None, PWM or DAC audio output, melody or strike pattern, audio level, app volume, extra relay and LED |
+| Home | Readiness, WiFi/link state, Mute, ring history (doorbell only by default) and clear |
+| Sound | Gong (default) / Audio / None, PWM or DAC audio output, ringtone override, melody or strike pattern previews, audio level, app volume, extra relay and LED |
 | Setup | Only page during initial setup, without navigation: WiFi, pairing, sound/output wiring, optional sign-in, then review and Finish; unlocks the other pages and does not return |
 | Settings → General | Name and per-browser System/Light/Dark theme |
 | Network & time | WiFi scan/connect, Client/AP/off mode, hotspot settings and NTP server |
@@ -226,8 +226,9 @@ physical press when verifying reception.
 | Advanced | Frequency, trim, receiver, polarity and GPIO mapping |
 | Debug | Radio diagnostics, log/download, last 32 packets, pairing/rejoin/test and passive manual profile |
 
-The Sound views show the ten numbered slots used by the doorbell, with local
-preview controls and defaults for tests and MQTT plays.
+The Sound views list the ten numbered slots used by the doorbell. Tap any slot
+to hear it; with **Override ringtone** on, the list instead selects the one
+sound every ring plays.
 
 ![Gong settings: ten numbered strike patterns](firmware/docs/images/readme-sound-gong.png)
 
@@ -241,12 +242,22 @@ Sound and Setup. **Audio** plays the same melodies using either **PWM** or
 or None is selected. Saved PWM/DAC choices migrate to Audio with the same method;
 GPIO assignments are retained as **Audio output** and **Relay**.
 
-Doorbell rings use the music ID sent with each ring, so different Reolink event
-rules can play different sounds without changing local settings. Sound/Setup
-choices set defaults for web/button tests and MQTT plays. Switching between
-Audio and Gong preserves the numbered slot. Existing saved local indices keep
-their sounds; no pairing or settings reset is required. Unknown music IDs,
-including 10, are ignored and reported in packet diagnostics.
+Every ring requests a sound slot, and all triggers follow the same rule:
+
+| Trigger | Requested slot |
+|---|---|
+| Doorbell ring | Music ID sent with the ring (the ringtone chosen in the Reolink app) |
+| MQTT `/play` or `POST /api/gong/test` with `sound` | That slot |
+| BOOT button, serial `g`, Home Assistant Play chime, MQTT/API play without `sound` | Slot 1 (music ID 0) |
+
+By default each ring plays its requested slot, so different Reolink event rules
+can play different sounds without changing local settings. **Override ringtone**
+(off by default) plays the selected melody or pattern instead, whatever the
+trigger requests. Explicit `melody`/`pattern` previews always play exactly that
+sound. Switching between Audio and Gong preserves the selected slot. Existing
+saved local indices keep their sounds; no pairing or settings reset is required.
+Unknown music IDs, including 10, are ignored and reported in packet diagnostics,
+also while the ringtone is overridden.
 
 | Doorbell slot (music ID) | PWM/DAC alternative | Gong pattern |
 |---|---|---|
@@ -385,10 +396,12 @@ mosquitto_sub -h broker.local -t 'reolink_chime/example/#' -v
 mosquitto_pub -h broker.local -t 'reolink_chime/example/set' -m '{"volume":2,"melody":"Ascending"}'
 mosquitto_pub -h broker.local -t 'reolink_chime/example/set/led' -m OFF
 mosquitto_pub -h broker.local -t 'reolink_chime/example/play' -m '{}'
+mosquitto_pub -h broker.local -t 'reolink_chime/example/play' -m '{"sound":3}'
 ```
 
 Home Assistant discovery adds doorbell events, a five-second Ringing sensor,
-Play button, mute controls, output/melody/pattern selects, volume/timing controls,
+Play button, mute controls, output selects, Override ringtone switch with
+melody/pattern selects (unavailable while the override is off), volume/timing controls,
 name/LED controls and link/ring/WiFi diagnostics. MQTT only changes chime settings;
 administrative WiFi, RF, GPIO, pairing and OTA operations use the HTTP API.
 Events are not buffered for later delivery while the broker is disconnected.

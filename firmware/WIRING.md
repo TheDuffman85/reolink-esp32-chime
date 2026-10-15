@@ -149,7 +149,7 @@ not been validated on the tested hardware.
 
 | Control | Behavior |
 |---|---|
-| BOOT / GPIO0, release after 30 ms–2 s | Test the saved gong settings |
+| BOOT / GPIO0, release after 30 ms–2 s | Test the saved sound settings (slot 1 unless the ringtone is overridden) |
 | BOOT, release after 2–8 s | Start a five-minute pairing window |
 | BOOT, hold at least 8 s | Clear WiFi credentials and enable setup AP; keep profile and sign-in |
 | BOOT, hold at least 15 s | Also turn web sign-in off and reopen the setup AP without a password |

@@ -9,6 +9,7 @@ Gong gong;
 bool gongReady = false;
 GongExtra gongx;
 uint8_t gongAudioOutput = 0;
+bool overrideRingtone = false;
 chime::AppConfig chimeApp;
 bool muteForever = false, muteTimed = false;
 chime::RingLog ringLog;
@@ -31,7 +32,8 @@ bool storeChime(const chime::ChimeState &next) {
     nextSettings.gong.volume != settings.gong.volume || nextSettings.gong.relay != settings.gong.relay ||
     nextSettings.gong.relayMs != settings.gong.relayMs;
   const bool gongChanged = nextGong.type != gongx.type || nextGong.pattern != gongx.pattern ||
-    nextGong.pulseMs != gongx.pulseMs || nextGong.gapMs != gongx.gapMs || next.audioOutput != gongAudioOutput;
+    nextGong.pulseMs != gongx.pulseMs || nextGong.gapMs != gongx.gapMs || next.audioOutput != gongAudioOutput ||
+    next.overrideRingtone != overrideRingtone;
   const bool appChanged = strcmp(nextApp.name, chimeApp.name) || nextApp.volume != chimeApp.volume ||
     nextApp.led != chimeApp.led;
   // A timed mute needs no flash write; minutes left only change when requested.
@@ -53,10 +55,11 @@ bool storeChime(const chime::ChimeState &next) {
     Preferences prefs; ok = prefs.begin("gongx", false);
     if (ok) {
       ok = prefs.putUChar("audioout", next.audioOutput) == 1 &&
+        prefs.putUChar("override", next.overrideRingtone ? 1 : 0) == 1 &&
         prefs.putBytes("gong", &nextGong, sizeof(nextGong)) == sizeof(nextGong);
       prefs.end();
     }
-    if (ok) { gongx = nextGong; gongAudioOutput = next.audioOutput; }
+    if (ok) { gongx = nextGong; gongAudioOutput = next.audioOutput; overrideRingtone = next.overrideRingtone; }
   }
   if (ok && appChanged) {
     Preferences prefs; ok = prefs.begin("chimeapp", false);
@@ -113,6 +116,8 @@ void loadGongExtra() {
     stored.type = chime::modeFromStoredType(stored.type);
     gongx = stored;
   }
+  // Absent on older installs: rings keep playing the requested slot.
+  overrideRingtone = prefs.getUChar("override", 0) == 1;
   prefs.end();
 }
 const char *outputError(GongType type, const PinMap &map) {
@@ -121,11 +126,12 @@ const char *outputError(GongType type, const PinMap &map) {
   if (type == GongType::Dac && !chime::dacPin(map.audio)) return "DAC audio requires GPIO25 or GPIO26";
   return nullptr;
 }
-GongRequest gongRequest(uint8_t appVolume) {
+GongRequest gongRequest(uint8_t appVolume, uint8_t slot) {
   GongRequest request;
   request.tone = settings.gong; request.tone.volume = request.tone.volume * appVolume / 4;
   request.type = outputType(gongx.type, gongAudioOutput);
   request.pattern = gongx.pattern; request.pulseMs = gongx.pulseMs; request.gapMs = gongx.gapMs;
+  chime::selectSound(slot, overrideRingtone, request.tone.melody, request.pattern);
   return request;
 }
 void loadChimeApp() {
@@ -166,6 +172,7 @@ chime::ChimeState currentChime() {
   chime::ChimeState state;
   state.type = gongx.type; state.audioOutput = gongAudioOutput; state.melody = settings.gong.melody; state.level = settings.gong.volume;
   state.volume = chimeApp.volume; state.pattern = gongx.pattern; state.led = chimeApp.led;
+  state.overrideRingtone = overrideRingtone;
   state.extraRelay = settings.gong.relay; state.extraRelayMs = settings.gong.relayMs;
   state.pulseMs = gongx.pulseMs; state.gapMs = gongx.gapMs;
   memcpy(state.name, chimeApp.name, sizeof(state.name));
@@ -184,9 +191,9 @@ const char *updateChime(JsonObjectConst update, const char *origin, const PinMap
   if (next.type==uint8_t(chime::GongKind::Audio) && next.extraRelay && map.relay<0 &&
       (selectingOutput || update.containsKey("extra_relay"))) return "Assign a relay GPIO for the extra pulse";
   if (!storeChime(next)) return "Could not save the chime settings";
-  logf("[%s] chime: type=%s audio_output=%s melody=%u level=%u volume=%u pattern=%u led=%u mute=%s name='%s'\n", origin,
+  logf("[%s] chime: type=%s audio_output=%s melody=%u level=%u volume=%u pattern=%u override=%u led=%u mute=%s name='%s'\n", origin,
     chime::GongKindNames[gongx.type], chime::AudioOutputNames[gongAudioOutput], settings.gong.melody, settings.gong.volume, chimeApp.volume,
-    gongx.pattern, chimeApp.led, muteForever ? "on" : muteTimed ? (String(next.muteMinutes) + " min").c_str() : "off",
+    gongx.pattern, overrideRingtone, chimeApp.led, muteForever ? "on" : muteTimed ? (String(next.muteMinutes) + " min").c_str() : "off",
     chimeApp.name);
   return nullptr;
 }

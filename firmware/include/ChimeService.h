@@ -13,8 +13,9 @@ extern bool gongReady;
 // (namespace "gongx") so existing pairings survive this firmware update.
 struct GongExtra { uint8_t type = 1, pattern = 0; uint16_t pulseMs = 300, gapMs = 700; };
 extern GongExtra gongx;
-// Stored under its own key in gongx; keeps the existing GongExtra blob layout.
+// Stored under their own keys in gongx; keeps the existing GongExtra blob layout.
 extern uint8_t gongAudioOutput;
+extern bool overrideRingtone;
 // Applies a validated saved map without recreating tasks or rebooting.
 void applyPinsLive(const PinMap &map);
 void loadGongExtra();
@@ -25,9 +26,11 @@ const char *outputError(GongType type, const PinMap &map);
 extern chime::AppConfig chimeApp;
 void loadChimeApp();
 void saveChimeApp();
-// Local test/MQTT defaults. Doorbell rings replace both sound slots with their
-// transmitted music ID. appVolume 0..4 scales audio; 0 silences the relay too.
-GongRequest gongRequest(uint8_t appVolume);
+// The saved output for a requested sound slot (0..9; the doorbell's music ID,
+// MQTT/API "sound", otherwise 0). With the ringtone override on, the saved
+// melody/pattern plays instead. appVolume 0..4 scales audio; 0 silences the
+// relay too.
+GongRequest gongRequest(uint8_t appVolume, uint8_t slot = 0);
 
 // Permanent mute is saved (NVS "mute"); a timed mute lives in RAM, so a
 // restart ends it and the chime never stays silent after a power cut.

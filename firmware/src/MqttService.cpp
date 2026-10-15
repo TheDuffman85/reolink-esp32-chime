@@ -35,9 +35,17 @@ void announceMqtt() {
     String body; if (!remove) serializeJson(doc, body);
     mqtt.publish(topic, body, true);
   };
+  // overrideOnly: unavailable while rings play the requested ringtone slot.
   const auto select = [&](const char *id, const char *name, const char *icon, const char *field,
-                          const char *const *names, uint8_t count) {
+                          const char *const *names, uint8_t count, bool overrideOnly) {
     JsonObject o = entity(id, name, icon, nullptr);
+    if (overrideOnly) {
+      o.remove("avty_t"); o["avty_mode"] = "all";
+      JsonArray avty = o.createNestedArray("avty");
+      avty.createNestedObject()["t"] = "~/availability";
+      JsonObject state = avty.createNestedObject();
+      state["t"] = "~/state"; state["val_tpl"] = "{{ 'online' if value_json.override_ringtone else 'offline' }}";
+    }
     o["stat_t"] = "~/state"; o["val_tpl"] = String("{{ value_json.") + field + " }}";
     o["cmd_t"] = "~/set"; o["cmd_tpl"] = String("{\"") + field + "\": {{ value | tojson }}}";
     JsonArray options = o.createNestedArray("ops"); for (uint8_t i = 0; i < count; ++i) options.add(names[i]);
@@ -70,10 +78,11 @@ void announceMqtt() {
     o["cmd_t"] = "~/play"; o["pl_prs"] = "{}";
     send("button", "play"); }
   const char *const outputChoices[] = {"Gong", "Audio", "None"};
-  select("gong_type", "Sound mode", "mdi:bell-cog", "type", outputChoices, chime::GongKinds);
-  select("audio_output", "Audio output", "mdi:audio-input-rca", "audio_output", chime::AudioOutputNames, chime::AudioOutputs);
-  select("melody", "Melody", "mdi:music", "melody", chime::MelodyNames, chime::Melodies);
-  select("pattern", "Gong pattern", "mdi:bell-ring-outline", "pattern", chime::PatternNames, chime::Patterns);
+  select("gong_type", "Sound mode", "mdi:bell-cog", "type", outputChoices, chime::GongKinds, false);
+  select("audio_output", "Audio output", "mdi:audio-input-rca", "audio_output", chime::AudioOutputNames, chime::AudioOutputs, false);
+  toggle("override_ringtone", "Override ringtone", "mdi:playlist-music", "override_ringtone", nullptr);
+  select("melody", "Melody", "mdi:music", "melody", chime::MelodyNames, chime::Melodies, true);
+  select("pattern", "Gong pattern", "mdi:bell-ring-outline", "pattern", chime::PatternNames, chime::Patterns, true);
   number("volume", "Chime volume", "mdi:volume-high", "volume", 0, 4, 1, nullptr, nullptr);
   mqtt.publish(String(integrations.prefix) + "/number/" + node + "/buzzer_level/config", "", true);
   number("audio_level", "Audio level", "mdi:volume-source", "audio_level", 0, 100, 5, "%", "config");
@@ -131,8 +140,14 @@ void handleMqtt(const MqttMessage &message) {
     lastMqttState = ""; // Confirm the (possibly unchanged) state to optimistic clients.
   } else if (topic == mqttBase + "/play") {
     uint8_t volume = chimeApp.volume, mode = gongx.type, output = gongAudioOutput; uint8_t flags = 0; bool force = false;
-    GongRequest request = gongRequest(volume);
-    if (message.length && !deserializeJson(doc, message.payload, message.length) && doc.is<JsonObject>()) {
+    const bool options = message.length && !deserializeJson(doc, message.payload, message.length) && doc.is<JsonObject>();
+    // "sound" requests a slot like the doorbell's music ID; it is not a preview.
+    int slot = 0;
+    if (options && doc.containsKey("sound") && (slot = chime::soundSlot(doc["sound"])) < 0) {
+      mqttResult("sound: 0 to 9 or a melody or pattern name"); return;
+    }
+    GongRequest request = gongRequest(volume, uint8_t(slot));
+    if (options) {
       int pick;
       if (doc.containsKey("force")) {
         if (!doc["force"].is<bool>()) { mqttResult("force: true or false"); return; }

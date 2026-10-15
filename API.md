@@ -130,7 +130,7 @@ GET returns the saved values below plus `wifi_password_set`, `profile`,
 | `auto_trim` | Boolean | Automatic tuning can replace manual trim |
 | `rx_mode` | Integer 0/1 | CC1101 packet engine / ESP32 bit sampling |
 | `polarity` | Integer 0/1/2 | Auto / normal / inverted RX |
-| `melody` | Integer 0–9 | Default local PWM/DAC test/MQTT melody |
+| `melody` | Integer 0–9 | PWM/DAC melody played while the ringtone is overridden |
 | `volume` | Integer 0–100 | **PWM/DAC audio level**, distinct from app volume |
 | `relay` | Boolean | Extra relay pulse in PWM/DAC modes |
 | `relay_ms` | Integer 50–2000 | Extra pulse length |
@@ -177,27 +177,35 @@ Audio level and exposes Sound mode plus a separate Audio output selector.
 |---|---|
 | `type` | 0 Audio, 1 Gong (default), 2 None/silent |
 | `audio_output` | 0 PWM (default), 1 DAC |
-| `pattern` | 0–9; see the [sound slot table](README.md#web-interface) |
+| `override_ringtone` | Boolean, default false; always play the saved melody/pattern |
+| `pattern` | 0–9, played while the ringtone is overridden; see the [sound slot table](README.md#web-interface) |
 | `pulse_ms` | 50–2000 |
 | `gap_ms` | 100–3000 |
 
-POST accepts only these integer fields. Selecting relay type without a relay
+POST accepts only these fields; all except `override_ringtone` are integers. Selecting relay type without a relay
 GPIO returns 409. Audio requires an audio GPIO; DAC output requires GPIO25 or
 GPIO26. Invalid output wiring returns 409. Independent name, LED, volume and
 mute changes remain available if an optional output pin is disconnected. GET also returns `relay_available`,
 `pwm_available` and `dac_available` for the active GPIO map.
 
-Doorbell rings override the melody/pattern per ring with the transmitted music
-ID (0–9), without saving it as a local default. Ten synthesized melodies and
+Every ring requests a sound slot 0–9: doorbell rings send their music ID,
+MQTT/API plays an optional `sound`, and everything else slot 0. With
+`override_ringtone` false (default) the requested slot selects the melody or
+pattern for that ring without saving it. With `override_ringtone` true every
+trigger plays the saved melody/pattern instead. Ten synthesized melodies and
 ten gong patterns correspond to Reolink's ten slots; they are alternatives to
-the original audio. IDs outside 0–9 are ignored and shown in packet diagnostics.
-The ring event's `tone` retains the RF ID and `sound` identifies what played.
+the original audio. IDs outside 0–9 are ignored and shown in packet diagnostics,
+also while overriding. The ring event's `tone` retains the RF ID and `sound`
+identifies what played.
 
 ### POST `/api/gong/test`
 
-Empty body or `{}` tests saved output at full app volume without saving
-settings. Local tests bypass owner mute. A nonempty JSON object supplies
-temporary overrides: `type` 0–2, `audio_output` 0–1, `melody` 0–9, `volume` **0–100 audio level**,
+Empty body or `{}` plays slot 0 (or the overridden ringtone) through the saved
+output at full app volume without saving settings. Local tests bypass owner mute.
+`sound` (0–9 or a melody/pattern name) requests a slot like the doorbell's music
+ID, follows the ringtone override and is not marked as a preview; invalid values
+return 400. Other fields supply temporary preview overrides that play exactly
+the given sound: `type` 0–2, `audio_output` 0–1, `melody` 0–9, `volume` **0–100 audio level**,
 `pattern` 0–9, `pulse_ms` 50–2000, `gap_ms` 100–3000, `extra_relay` (boolean)
 and `extra_relay_ms` 50–2000. Audio previews use the selected extra relay
 settings; an enabled extra relay needs a Relay GPIO. Out-of-range preview
@@ -434,7 +442,7 @@ Let `<base>` be the configured `topic` or returned `default_topic`.
 Example retained state:
 
 ```json
-{"type":"Gong","audio_output":"PWM","melody":"Ding dong","pattern":"Ding-dong","audio_level":35,"volume":4,"led":true,"extra_relay":false,"extra_relay_ms":300,"pulse_ms":300,"gap_ms":700,"name":"Hallway","mute":false,"mute_minutes":0}
+{"type":"Gong","audio_output":"PWM","melody":"Ding dong","pattern":"Ding-dong","override_ringtone":false,"audio_level":35,"volume":4,"led":true,"extra_relay":false,"extra_relay_ms":300,"pulse_ms":300,"gap_ms":700,"name":"Hallway","mute":false,"mute_minutes":0}
 ```
 
 Status fields: `linked`, `paired`, `radio_ok`, `rings`, `last_ring` (UTC ISO
@@ -456,6 +464,7 @@ events include `audio_output` (PWM or DAC); it is omitted for Gong/None events.
 | `audio_output` | 0–1 or PWM / DAC |
 | `melody` | 0–9 or names from the [sound slot table](README.md#web-interface) |
 | `pattern` | 0–9 or names from the [sound slot table](README.md#web-interface) |
+| `override_ringtone` | Boolean, 0/1, ON/OFF or true/false text |
 | `volume` | 0–4 app volume |
 | `audio_level` | 0–100 PWM/DAC audio percentage |
 | `led`, `extra_relay`, `mute` | Boolean, 0/1, ON/OFF or true/false text |
@@ -469,9 +478,12 @@ Unknown keys or invalid values reject the complete settings update. MQTT
 cannot modify credentials, radio/GPIOs, WiFi, pairing, OTA or reboot. Use
 non-retained commands for one-shot play requests.
 
-`/play` with `{}` plays current output at app volume and obeys owner mute.
-Optional `type`, `audio_output`, `melody`, `pattern` and `volume` (0–4) override only this
-play. `force:true` bypasses owner mute but does not configure a missing output
+`/play` with `{}` plays slot 0 (or the overridden ringtone) through the current
+output at app volume and obeys owner mute. `sound` (0–9 or a melody/pattern
+name) requests a slot exactly like a doorbell ring and follows the ringtone
+override; an invalid `sound` is rejected. Optional `type`, `audio_output`,
+`melody`, `pattern` and `volume` (0–4) override only this play and mark it as a
+preview; `melody`/`pattern` play exactly that sound. `force:true` bypasses owner mute but does not configure a missing output
 or override app volume zero. Success/error is published to `/result`;
 an outcome is also logged/published. The handler treats empty or malformed
 play JSON as a default play, so validate payloads in clients.
@@ -480,17 +492,19 @@ play JSON as a default play, so validate payloads in clients.
 <base>/set          {"volume":2,"melody":"Ascending"}
 <base>/set/led      OFF
 <base>/set/mute_minutes  45
+<base>/play         {"sound":"Triple"}
 <base>/play         {"force":true,"volume":4}
 <base>/get          {}
 ```
 
 ### Home Assistant discovery
 
-Discovery publishes 22 retained configs under
+Discovery publishes 23 retained configs under
 `<prefix>/<component>/reolink_chime_<device-id>/<object>/config` and republishes
 when `<prefix>/status` is `online`. Entities cover doorbell events, a five-second
 Ringing indicator, Play button, permanent/timed mute, mute-until time, sound mode/
-audio output/melody/pattern, volume/audio level, LED/extra relay, timings/name and diagnostics.
+audio output, ringtone override, melody/pattern (unavailable while the override
+is off), volume/audio level, LED/extra relay, timings/name and diagnostics.
 Disabling discovery publishes empty retained configs to remove entities.
 NTP supplies UTC event/sensor timestamps; RF reception does not depend on MQTT
 or clock synchronization.
