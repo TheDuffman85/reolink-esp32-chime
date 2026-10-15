@@ -38,6 +38,7 @@ See the [original firmware audit](firmware/docs/vendor-sounds.md) and sound tabl
 
 | Document | Contents |
 |---|---|
+| [CHANGELOG.md](CHANGELOG.md) | Changes in each firmware version |
 | [PROTOCOL.md](PROTOCOL.md) | V2 RF framing, pairing, encryption, join, data and frequencies |
 | [API.md](API.md) | HTTP routes, authentication, request fields, responses and MQTT |
 | [WIRING.md](firmware/WIRING.md) | Radio, PWM/DAC audio, relay circuits and physical controls |
@@ -452,7 +453,9 @@ Set the firmware version manually in `firmware/version.json`; builds keep it
 unchanged. Push a tag exactly matching that version (e.g. `1.0.24`, without a
 `v` prefix) to build, test and publish a GitHub release containing the OTA image,
 initial USB-install image and manifest, then deploy the browser installer to
-GitHub Pages. A mismatched tag fails the workflow. See the
+GitHub Pages. The release notes come from the version's section in
+[CHANGELOG.md](CHANGELOG.md); a mismatched tag or a missing changelog section
+fails the workflow. See the
 [release instructions](firmware/README.md#github-releases).
 
 Credentials, pairing and GPIO settings persist across normal updates. Build

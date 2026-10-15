@@ -74,7 +74,10 @@ Do not upload the merged image through the web updater.
 
 ## GitHub releases
 
-From the repository root, push a tag exactly matching the committed version in
+First add a section for the version to [CHANGELOG.md](../CHANGELOG.md), headed
+`## 1.0.24 - YYYY-MM-DD`. `python3 tools/changelog.py` prints the section of the
+current version and fails when it is missing or empty. Then, from the repository
+root, push a tag exactly matching the committed version in
 `firmware/version.json`, without a `v` prefix. For example, for version `1.0.24`:
 
 ```bash
@@ -83,9 +86,10 @@ git push origin 1.0.24
 ```
 
 The [Release workflow](../.github/workflows/release.yml) runs on every pushed
-tag and rejects a mismatch before building. It builds `esp32dev`, runs the host
-tests and fuzz corpus, verifies the embedded version while packaging, then
-creates a GitHub release with generated notes and attaches `firmware.bin`,
+tag and rejects a version mismatch or a missing changelog section before
+building. It builds `esp32dev`, runs the host tests and fuzz corpus, verifies
+the embedded version while packaging, then creates a GitHub release with the
+changelog section and installation notes, and attaches `firmware.bin`,
 `firmware-initial.bin` and `manifest.json`. Use `firmware.bin` for OTA updates
 and `firmware-initial.bin` for [initial USB installation](#initial-usb-installation-from-a-release).
 A failed check, build, test or packaging step prevents release publication.

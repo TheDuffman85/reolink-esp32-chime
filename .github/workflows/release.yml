@@ -1,4 +1,5 @@
-# Push a tag exactly matching firmware/version.json (e.g. 1.0.24).
+# Push a tag exactly matching firmware/version.json (e.g. 1.0.24). CHANGELOG.md
+# must contain a non-empty section for that version; it becomes the release notes.
 name: Release
 
 on:
@@ -38,6 +39,11 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          mkdir -p ../release-notes
+          python3 tools/changelog.py "$GITHUB_REF_NAME" > ../release-notes/changelog.md
+
       - name: Install build and test dependencies
         run: |
           python3 -m pip install platformio==6.2.0
@@ -59,6 +65,12 @@ jobs:
           path: firmware/dist/
           if-no-files-found: error
 
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-notes
+          path: release-notes/
+          if-no-files-found: error
+
   release:
     needs: build
     runs-on: ubuntu-24.04
@@ -74,9 +86,16 @@ jobs:
           name: firmware
           path: dist
 
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-notes
+          path: notes
+
       - name: Create release
         run: |
-          cat > release-notes.md <<'EOF'
+          cp notes/changelog.md release-notes.md
+          printf '\n### Installation\n\n' >> release-notes.md
+          cat >> release-notes.md <<'EOF'
           - Upload `firmware.bin` through Settings → Firmware for an OTA update.
           - For initial USB installation, flash `firmware-initial.bin` at address `0x0` using esptool. It includes the bootloader, partition table, OTA boot data and app; no PlatformIO build is required. Flashing this merged image clears stored settings. Do not upload it through the web updater.
           - `manifest.json` contains the firmware version, both image SHA-256 hashes and source hashes.
@@ -86,5 +105,4 @@ jobs:
           gh release create "$VERSION" dist/firmware.bin dist/firmware-initial.bin dist/manifest.json \
             --verify-tag \
             --title "$VERSION" \
-            --generate-notes \
             --notes-file release-notes.md

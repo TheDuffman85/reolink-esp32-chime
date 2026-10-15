@@ -2,6 +2,7 @@
 set -euo pipefail
 firmware_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 python3 "$firmware_dir/test/version_test.py"
+python3 "$firmware_dir/test/changelog_test.py"
 python3 "$firmware_dir/test/package_test.py"
 python3 "$firmware_dir/test/web_ui_test.py"
 (
