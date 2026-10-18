@@ -44,9 +44,11 @@ bool saveDoorbellStore(const DoorbellStore &store);
 // autoTrim: automatic trim (Afc.h). calibrated: a trim was measured; until
 // then packet-engine RX uses the wide bandwidth. rxMode: RxMode, packet
 // engine by default. extender: experimental range extender (Relay.h), off by
-// default.
+// default. repairFrames: restore damaged frames from three repeats
+// (chime::Combiner), off by default; meant for poor reception.
 struct RadioOptions { bool autoTrim = true; bool calibrated = false;
-                      RxMode rxMode = RxMode::PacketEngine; bool extender = false; };
+                      RxMode rxMode = RxMode::PacketEngine; bool extender = false;
+                      bool repairFrames = false; };
 bool loadRadioOptions(RadioOptions &options);
 bool saveRadioOptions(const RadioOptions &options);
 // WiFi mode and access-point hotspot, NVS namespace "wifi".

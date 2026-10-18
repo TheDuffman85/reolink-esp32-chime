@@ -10,10 +10,11 @@
 Radio radio;
 chime::Decoder decoder;
 chime::Duplicates duplicates;
+chime::Combiner combiner;
 chime::Doorbells doorbells;
 chime::Relay extender;
 uint32_t transmitted = 0, transmitErrors = 0, radioResets = 0, rawBytes = 0;
-uint32_t lastPacketAt = 0, packetCount = 0, crcTi = 0, crcBad = 0, crcCcitt = 0, rings = 0, lastRing = 0;
+uint32_t lastPacketAt = 0, packetCount = 0, crcTi = 0, crcBad = 0, crcCcitt = 0, crcCombined = 0, rings = 0, lastRing = 0;
 uint32_t lastAppAt = 0, appRequests = 0; uint8_t lastAppOpcode = 0;
 int8_t sweepTrim = 0;
 uint32_t sweepCombo = UINT32_MAX;
@@ -315,6 +316,15 @@ void onPacket(const chime::Packet &packet, const RxFrame &frame) {
       break;
     }
   }
+  // Damaged repeats: try to restore the frame from three copies (opt-in).
+  chime::Packet restored;
+  if (!radioOptions.repairFrames) return;
+  if (packet.crc == chime::Crc::Ti8005) combiner.drop(packet.size);
+  else if (packet.crc == chime::Crc::Bad && combiner.offer(packet, millis(), restored)) {
+    ++crcCombined;
+    logf("[rx] frame restored from 3 damaged copies\n");
+    onPacket(restored, frame);
+  }
 }
 }
 
@@ -565,6 +575,9 @@ void serviceLink() {
     }
   }
   doorbells.tick(millis());
+  for (size_t i = 0; i < doorbells.count(); ++i)
+    if (const char *reason = doorbells.link(i).takeAutoRejoin())
+      logf("[link] rejoining %s: %s\n", doorbellName(i).c_str(), reason);
   size_t slot = 0;
   if (const auto *frame = doorbells.peek(millis(), slot)) {
     // TX polarity is unproven. Use the polarity of the last valid received

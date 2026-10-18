@@ -126,4 +126,43 @@ void Duplicates::reset() { for (auto &entry : entries_) entry = Entry{}; next_ =
 void Duplicates::forget(uint32_t source) {
   for (auto &entry : entries_) if (entry.source == source) entry = Entry{};
 }
+
+namespace {
+constexpr uint32_t CombineWindowMs = 3000;
+}
+bool Combiner::offer(const Packet &damaged, uint32_t now, Packet &out) {
+  if (damaged.crc != Crc::Bad || damaged.size < 5 || damaged.size != size_t(damaged.bytes[0]) + 3) return false;
+  const auto usable = [&](const Entry &e) {
+    return e.used && e.packet.size == damaged.size && e.packet.inverted == damaged.inverted &&
+      uint32_t(now - e.at) <= CombineWindowMs;
+  };
+  constexpr size_t count = sizeof(entries_) / sizeof(entries_[0]);
+  for (size_t i = 0; i < count; ++i) {
+    if (!usable(entries_[i])) continue;
+    for (size_t j = i + 1; j < count; ++j) {
+      if (!usable(entries_[j])) continue;
+      const uint8_t *a = entries_[i].packet.bytes, *b = entries_[j].packet.bytes, *c = damaged.bytes;
+      Packet voted;
+      voted.size = damaged.size; voted.inverted = damaged.inverted;
+      for (size_t k = 0; k < damaged.size; ++k) voted.bytes[k] = uint8_t((a[k] & b[k]) | (a[k] & c[k]) | (b[k] & c[k]));
+      const size_t body = voted.size - 2;
+      if (voted.bytes[0] + 3u != voted.size ||
+          crc16(voted.bytes, body, 0x8005) != (uint16_t(voted.bytes[body]) << 8 | voted.bytes[body + 1])) continue;
+      voted.crc = Crc::Ti8005;
+      out = voted;
+      drop(damaged.size);
+      return true;
+    }
+  }
+  entries_[next_].packet = damaged; entries_[next_].at = now; entries_[next_].used = true;
+  next_ = (next_ + 1) % count;
+  return false;
+}
+void Combiner::drop(size_t size) {
+  for (auto &e : entries_) if (e.packet.size == size) e.used = false;
+}
+void Combiner::reset() {
+  for (auto &e : entries_) e.used = false;
+  next_ = 0;
+}
 }

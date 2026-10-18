@@ -86,11 +86,15 @@ LinkProfile profile(uint32_t ap, const uint8_t key[16], uint16_t pair) {
 void init(Doorbells &d, const std::vector<LinkProfile> &profiles) {
   d.init(Node, Boot, aes, nullptr, profiles.data(), profiles.size());
 }
-// Sends every queued frame (all must come from slot), then answers the join.
+// Sends the join request of slot after any repeated join ACKs of other
+// slots, then answers the join.
 void join(Doorbells &d, size_t expected, uint32_t ap, const uint8_t key[16], uint16_t pair, uint32_t now) {
   d.tick(now);
   size_t slot = 99;
   Bytes request = outgoing(d, slot, now);
+  while (slot != expected && request.size() == 24 && request[1] == 2) {
+    d.consume(slot, true, now); d.tick(now); request = outgoing(d, slot, now);
+  }
   assert(slot == expected && request[1] == 2 && read32le(request.data() + 8) == ap);
   d.consume(slot, true, now);
   size_t from = 99;
@@ -101,6 +105,15 @@ void join(Doorbells &d, size_t expected, uint32_t ap, const uint8_t key[16], uin
   // A duplicate slot of the same doorbell may have moved this one down.
   const int joined = d.find(ap);
   assert(joined >= 0 && d.link(joined).profileReady() && d.link(joined).profile().pair == pair);
+}
+// Sends the repeated join ACKs that are due.
+void settle(Doorbells &d, uint32_t now) {
+  size_t slot = 99;
+  for (d.tick(now); const AirFrame *air = d.peek(now, slot); d.tick(now)) {
+    const Bytes m = mac(decode(*air));
+    if (m.size() != 24 || m[1] != 2) break;
+    d.consume(slot, true, now);
+  }
 }
 // Discovery, pairing response and acknowledgement in the pairing slot.
 void pairKey(Doorbells &d, size_t expected, uint32_t ap, const uint8_t key[16], uint32_t now) {
@@ -149,6 +162,7 @@ void addSecondDoorbell() {
   assert(!d.receive(data(Front, FrontKey, 0x3333, 9, {13}), 2400, from));
   assert(d.link(1).profileReady() && d.link(1).profile().pair == 0x4444);
   // Heartbeats: both links queue one and take turns on the radio.
+  settle(d, 3000); settle(d, 3300);
   d.tick(40000);
   size_t first = 99, second = 99;
   const Bytes a = outgoing(d, first, 40000);

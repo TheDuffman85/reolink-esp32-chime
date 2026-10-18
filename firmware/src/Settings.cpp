@@ -104,13 +104,15 @@ bool loadRadioOptions(RadioOptions &options) {
   options.calibrated = prefs.getBool("cal", false);
   options.rxMode = prefs.getUChar("rxmode", 0) == 1 ? RxMode::Esp32 : RxMode::PacketEngine;
   options.extender = prefs.getBool("extender", false);
+  options.repairFrames = prefs.getBool("repair", false);
   prefs.end(); return true;
 }
 bool saveRadioOptions(const RadioOptions &options) {
   Preferences prefs;
   if (!prefs.begin("radio", false)) return false;
   const bool ok = prefs.putBool("autotrim", options.autoTrim) && prefs.putBool("cal", options.calibrated) &&
-    prefs.putUChar("rxmode", uint8_t(options.rxMode)) && prefs.putBool("extender", options.extender);
+    prefs.putUChar("rxmode", uint8_t(options.rxMode)) && prefs.putBool("extender", options.extender) &&
+    prefs.putBool("repair", options.repairFrames);
   prefs.end(); return ok;
 }
 bool loadWifiConfig(chime::WifiConfig &config) {

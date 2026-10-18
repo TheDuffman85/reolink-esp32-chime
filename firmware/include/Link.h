@@ -20,7 +20,7 @@ class Link {
   bool startJoin(uint32_t now);
   void cancel(uint32_t now);
   // Ends a pairing attempt with this reason as its state; no effect otherwise.
-  void abortPairing(const char *reason) { if (pairing_) fail(reason); }
+  void abortPairing(const char *reason) { if (pairing_) fail(0, reason); }
   void tick(uint32_t now);
   // Queues an encrypted type-3 application frame (e.g. a reply to a doorbell
   // request). Returns false while another frame is pending or not joined.
@@ -45,16 +45,22 @@ class Link {
   const char *state() const;
   uint32_t transmitted() const { return transmitted_; }
   uint32_t transmitFailures() const { return failures_; }
+  // Rejoins this link started by itself after a silence or a failed join.
+  uint32_t autoRejoins() const { return autoRejoins_; }
+  // The reason for a rejoin started since the last call, else nullptr.
+  const char *takeAutoRejoin() { const char *r = autoRejoinReason_; autoRejoinReason_ = nullptr; return r; }
  private:
   enum class State : uint8_t { Idle, Discovering, PairAck, Joining, JoinAck, Joined, Failed };
-  enum class Tx : uint8_t { Discovery, PairAck, PairReplay, JoinRequest, JoinAck, Heartbeat, Data };
+  enum class Tx : uint8_t { Discovery, PairAck, PairReplay, JoinRequest, JoinAck, AckRepeat, Heartbeat, Data };
   bool queue(uint8_t type, const uint8_t *plain, size_t length, Tx kind);
   bool queuePairAck(Tx kind);
-  void fail(const char *reason = "timed out");
+  void fail(uint32_t now, const char *reason = "timed out");
+  void autoRejoin(uint32_t now, const char *reason);
   State state_ = State::Idle;
   Tx tx_ = Tx::Discovery;
   LinkCrypto crypto_ = nullptr;
   const char *failure_ = "timed out";
+  const char *autoRejoinReason_ = nullptr;
   void *context_ = nullptr;
   LinkProfile profile_{}, candidate_{};
   AirFrame air_{};
@@ -64,8 +70,9 @@ class Link {
   uint32_t sequence_ = 0, transmitted_ = 0, failures_ = 0;
   uint32_t lastAttempt_ = 0;
   uint32_t receiveSequence_ = 0;
-  uint8_t attempts_ = 0, txFailures_ = 0;
+  uint32_t heardAt_ = 0, failedAt_ = 0, autoRejoins_ = 0;
+  uint8_t attempts_ = 0, txFailures_ = 0, ackRepeats_ = 0;
   bool pending_ = false, dirty_ = false, pairing_ = false, first_ = false;
-  bool retry_ = false;
+  bool retry_ = false, joinFailed_ = false;
 };
 }

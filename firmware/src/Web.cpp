@@ -234,6 +234,7 @@ void registerWeb() {
       else { b["last_frame_ms"]=nullptr; b["rssi_dbm"]=nullptr; }
       int8_t trim;
       if (trimSet.estimate(p.source,trim)) b["trim"]=trim; else b["trim"]=nullptr;
+      b["rejoins"]=link.autoRejoins();
     }
     doc["trim_spread"]=trimSet.spread();
     JsonObject ext=doc.createNestedObject("extender");
@@ -253,7 +254,7 @@ void registerWeb() {
     doc["node_id"]=hex32(settings.nodeId);
     doc["identity_compatible"]=chime::compatibleNodeId(settings.nodeId);
     doc["transmitted"]=transmitted; doc["transmit_errors"]=transmitErrors;
-    doc["packets"]=packetCount; doc["crc_ti"]=crcTi; doc["crc_bad"]=crcBad; doc["crc_ccitt"]=crcCcitt;
+    doc["packets"]=packetCount; doc["crc_ti"]=crcTi; doc["crc_bad"]=crcBad; doc["crc_ccitt"]=crcCcitt; doc["crc_combined"]=crcCombined; doc["repair_frames"]=radioOptions.repairFrames;
     doc["dropped"]=Radio::dropped; doc["invalid_lengths"]=Radio::invalidLengths+decoder.invalidLengths;
     doc["false_syncs"]=Radio::falseSyncs;
     doc["rings"]=rings; if (rings) doc["last_ring_ms"]=uptimeAt(lastRing); else doc["last_ring_ms"]=nullptr;
@@ -274,7 +275,7 @@ void registerWeb() {
     if (!authenticated()) return;
     StaticJsonDocument<1024> doc;
     doc["frequency_hz"]=settings.radio.hz; doc["trim"]=settings.radio.trim; doc["auto_trim"]=radioOptions.autoTrim;
-    doc["rx_mode"]=uint8_t(radioOptions.rxMode);
+    doc["rx_mode"]=uint8_t(radioOptions.rxMode); doc["repair_frames"]=radioOptions.repairFrames;
     doc["polarity"]=uint8_t(settings.radio.polarity); doc["melody"]=settings.gong.melody;
     doc["volume"]=settings.gong.volume; doc["relay"]=settings.gong.relay; doc["relay_ms"]=settings.gong.relayMs;
     doc["ssid"]=settings.ssid; doc["wifi_password_set"]=strlen(settings.wifiPassword)>0;
@@ -295,6 +296,7 @@ void registerWeb() {
     if (doorbells.busy()) { errorReply(409,"Cancel pairing/join before changing settings"); return; }
     Settings next = settings;
     if (!updateSettings(doc.as<JsonObjectConst>(),next) || !booleanField(doc.as<JsonObjectConst>(),"auto_trim") ||
+        !booleanField(doc.as<JsonObjectConst>(),"repair_frames") ||
         (doc.containsKey("rx_mode") && !(doc["rx_mode"].is<int>() && (doc["rx_mode"]==0 || doc["rx_mode"]==1)))) {
       errorReply(400,"Invalid settings, hex IDs/key, or WiFi password"); return;
     }
@@ -302,6 +304,7 @@ void registerWeb() {
     // measurement with the wide acquisition bandwidth.
     RadioOptions nextOptions = radioOptions;
     if (doc.containsKey("auto_trim")) nextOptions.autoTrim = doc["auto_trim"].as<bool>();
+    if (doc.containsKey("repair_frames")) nextOptions.repairFrames = doc["repair_frames"].as<bool>();
     if (doc.containsKey("rx_mode")) nextOptions.rxMode = doc["rx_mode"]==1 ? RxMode::Esp32 : RxMode::PacketEngine;
     if ((nextOptions.autoTrim && !radioOptions.autoTrim) || next.radio.hz != settings.radio.hz) nextOptions.calibrated = false;
     const bool freshTrim = radioOptions.calibrated && !nextOptions.calibrated;
@@ -311,9 +314,10 @@ void registerWeb() {
     if (storageOk && forgetAll) storageOk=clearAdditionalDoorbells();
     if (storageOk && freshTrim) storageOk=clearDoorbellTrims();
     if (storageOk && (nextOptions.autoTrim != radioOptions.autoTrim || nextOptions.calibrated != radioOptions.calibrated ||
-        nextOptions.rxMode != radioOptions.rxMode))
+        nextOptions.rxMode != radioOptions.rxMode || nextOptions.repairFrames != radioOptions.repairFrames))
       storageOk=saveRadioOptions(nextOptions);
     if (!storageOk) { restartRadio(); errorReply(500,"NVS write failed; settings were not applied"); return; }
+    if (!nextOptions.repairFrames) combiner.reset();
     radioOptions=nextOptions; resetAfc(freshTrim);
     const bool linkChanged = forgetAll || next.paired != settings.paired || next.source != settings.source ||
       next.destination != settings.destination || next.pair != settings.pair ||

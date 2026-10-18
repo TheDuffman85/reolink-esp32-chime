@@ -87,7 +87,8 @@ Returns a flat status object, plus the nested `mute` object:
 | `doorbells`, `max_doorbells`, `trim_spread` | Paired doorbells (below), the slot limit (4) and the spread of their trim estimates |
 | `extender` | Range extender state and counters (experimental, [below](#post-apiextender)) |
 | `node_id`, `doorbell_id`, `identity_compatible`, `chime_name` | Hex identities (`doorbell_id` is the first doorbell), signed-ID compatibility and name |
-| `transmitted`, `transmit_errors`, `packets`, `crc_ti`, `crc_bad`, `crc_ccitt` | RF counters since restart |
+| `transmitted`, `transmit_errors`, `packets`, `crc_ti`, `crc_bad`, `crc_ccitt`, `crc_combined` | RF counters since restart; `crc_combined` counts frames restored from three damaged copies (also counted in `crc_ti`) |
+| `repair_frames` | Whether damaged frames are restored (`POST /api/settings`) |
 | `dropped`, `invalid_lengths`, `false_syncs`, `radio_resets` | Receiver error/reset counters |
 | `rings`, `last_ring_ms`, `ring_seq`, `gong_active`, `gong_ready`, `storage_ok` | Ring counters, last uptime or null, output and storage state |
 | `auth_enabled`, `auth_user` | Authentication state |
@@ -105,7 +106,9 @@ Each `doorbells` entry, first doorbell first: `id`, `name` (local label,
 empty if unset), `display_name` (the label or `Doorbell N`), `paired`,
 `joined`, `state` (as `pairing`), `session` (four hex digits or null),
 `last_frame_ms` (uptime of its last valid frame or null), `rssi_dbm` (or null)
-and `trim` (its measured trim estimate or null).
+`trim` (its measured trim estimate or null) and `rejoins` (joins the chime
+started by itself since restart: after five minutes without a valid frame
+from the doorbell, or one minute after a failed join).
 
 #### Additional doorbells (experimental)
 
@@ -152,6 +155,7 @@ GET returns the saved values below plus `wifi_password_set`, `profile`,
 | `trim` | Integer −128..127 | Approximately 1586.914 Hz/step |
 | `auto_trim` | Boolean | Automatic tuning can replace manual trim |
 | `rx_mode` | Integer 0/1 | CC1101 packet engine / ESP32 bit sampling |
+| `repair_frames` | Boolean | Restore damaged doorbell frames from three repeats; off by default, meant for poor reception |
 | `polarity` | Integer 0/1/2 | Auto / normal / inverted RX |
 | `melody` | Integer 0–9 | PWM/DAC melody played while the ringtone is overridden |
 | `volume` | Integer 0–100 | **PWM/DAC audio level**, distinct from app volume |

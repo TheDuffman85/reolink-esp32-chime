@@ -2,6 +2,17 @@
 
 Changes to the ESP32 firmware, listed per version from [`firmware/version.json`](firmware/version.json).
 
+## 1.0.37 - 2026-10-18
+
+### Added
+
+- **Settings → Doorbell → Repair damaged frames**, off by default and meant for poor reception. The doorbell sends each frame several times; when three damaged copies of one frame arrive within three seconds, their bitwise majority is used if it passes the CRC. The card shows how many received frames failed the checksum and recommends the switch above 50 %. Logged as `[rx] frame restored from 3 damaged copies`; `/api/status` reports `repair_frames` and counts restored frames as `crc_combined`; `POST /api/settings` takes `repair_frames`.
+
+### Fixed
+
+- The chime no longer stays "linked" while the doorbell has silently dropped it. The doorbell marks a chime offline after three minutes without hearing it and only takes it back after a new join, which used to need **Retry** in the Reolink app. The chime now joins again after five minutes without a valid frame from a joined doorbell, and retries a failed join (no answer, or failed transmissions) every minute instead of giving up. Both are logged as `[link] rejoining …`; `/api/status` counts them per doorbell as `rejoins`.
+- The join acknowledgement is sent three times, 300 ms apart. The doorbell sets the chime online only when it receives it, and a single acknowledgement was often lost while the doorbell was still repeating its response, leaving the chime "Not connected" in the Reolink app although the chime showed linked.
+
 ## 1.0.36 - 2026-10-15
 
 ### Fixed

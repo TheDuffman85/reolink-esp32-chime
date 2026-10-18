@@ -100,6 +100,11 @@ void completeJoin(Link &link, uint32_t now) {
   assert(link.profileReady() && !link.pairing());
   assert(link.profile().paired && link.profile().source == Ap && link.profile().destination == Node);
   assert(link.profile().pair == Pair && std::memcmp(link.profile().key, Key, 16) == 0);
+  // The ACK is repeated twice, 300 ms apart, before anything else is sent.
+  link.tick(now + 301); assert(!link.peek(now + 301));
+  link.tick(now + 302); assert(outgoing(link) == ack); link.consume(true, now + 302);
+  link.tick(now + 602); assert(outgoing(link) == ack); link.consume(true, now + 602);
+  link.tick(now + 902); assert(!link.peek(now + 902));
 }
 
 void cryptoVector() {
@@ -189,21 +194,21 @@ void bootRejoinHeartbeatAndDisconnect() {
   Link link; init(link, profile(0x9999));
   assert(link.startJoin(100)); completeJoin(link, 100);
   assert(link.profileDirty()); link.clearProfileDirty();
-  link.tick(25101); assert(!link.peek(0));
-  link.tick(25102);
+  link.tick(25701); assert(!link.peek(0));
+  link.tick(25702);
   Bytes heartbeat = outgoing(link);
   assert(heartbeat.size() == 17 && heartbeat[1] == 3);
   assert(heartbeat[2] == 0x67 && heartbeat[3] == 0x45);
   assert(read32le(heartbeat.data() + 4) == Node && read32le(heartbeat.data() + 8) == Ap);
   assert(read32le(heartbeat.data() + 12) == 1 && decrypt(heartbeat, 16) == Bytes({13}));
-  link.consume(true, 25102); link.tick(50102);
+  link.consume(true, 25702); link.tick(50702);
   heartbeat = outgoing(link); assert(read32le(heartbeat.data() + 12) == 2);
-  link.consume(true, 50102);
-  accepted(link, joinResponse(), 50103); link.consume(true, 50103);
+  link.consume(true, 50702);
+  accepted(link, joinResponse(), 50703); link.consume(true, 50703);
   assert(!link.profileDirty());
-  link.tick(75103);
+  link.tick(75703);
   assert(read32le(outgoing(link).data() + 12) == 3);
-  link.consume(true, 75103);
+  link.consume(true, 75703);
   Bytes ring(20); ring[1] = 3; write16le(ring.data() + 2, Pair);
   write32le(ring.data() + 4, Node); write32le(ring.data() + 8, Ap);
   write32le(ring.data() + 12, 99); ring[16] = 9; ring[18] = 5;
@@ -328,6 +333,65 @@ void failuresTimeoutCancelAndRollover() {
   stalled.tick(start + 22000);
   assert(!stalled.peek(0) && !stalled.profileReady() && !stalled.profileDirty());
 }
+
+Packet dataFrame(uint32_t sequence) {
+  Bytes m(20); m[1] = 3; write16le(m.data() + 2, Pair);
+  write32le(m.data() + 4, Node); write32le(m.data() + 8, Ap);
+  write32le(m.data() + 12, sequence); m[16] = 9;
+  assert(aes(nullptr, Key, m.data() + 16, 4));
+  return packet(m);
+}
+void drain(Link &link, uint32_t now) { link.tick(now); if (link.peek(now)) link.consume(true, now); }
+bool joinRequest(Link &link, uint32_t now) {
+  const AirFrame *air = link.peek(now);
+  if (!air) return false;
+  const Bytes m = mac(decode(*air));
+  return m.size() == 20 && m[1] == 2;
+}
+
+void silenceAndFailedJoinRecovery() {
+  // A doorbell that has not been heard for five minutes may have dropped the
+  // chime without saying so: join again. Every valid frame restarts the wait.
+  Link link; init(link, profile());
+  assert(link.startJoin(100)); completeJoin(link, 100);
+  for (uint32_t now = 25102; now < 200000; now += 25000) drain(link, now);
+  assert(!link.receive(dataFrame(1), 200000));
+  for (uint32_t now = 200100; now < 500000; now += 25000) drain(link, now);
+  drain(link, 499999);
+  assert(link.profileReady() && link.autoRejoins() == 0 && !link.takeAutoRejoin());
+  link.tick(500000);
+  assert(!link.profileReady() && link.profile().paired && joinRequest(link, 500000));
+  assert(link.autoRejoins() == 1 && link.takeAutoRejoin() && !link.takeAutoRejoin());
+  completeJoin(link, 500000);
+  // The join response counts as heard; the next silence starts from there.
+  link.clearProfileDirty();
+  for (uint32_t now = 525002; now < 800002; now += 25000) drain(link, now);
+  drain(link, 800001); assert(link.profileReady() && link.autoRejoins() == 1);
+  link.tick(800002); assert(!link.profileReady() && link.autoRejoins() == 2);
+
+  // A join without an answer is retried a minute after it gave up.
+  Link failed; init(failed, profile()); assert(failed.startJoin(0));
+  for (uint32_t now = 0; now < 20000; now += 2000) drain(failed, now);
+  failed.tick(20000); assert(std::strcmp(failed.state(), "timed out") == 0);
+  failed.tick(79999); assert(!failed.peek(79999) && failed.autoRejoins() == 0);
+  failed.tick(80000); assert(joinRequest(failed, 80000) && failed.autoRejoins() == 1);
+  failed.consume(true, 80000); accepted(failed, joinResponse(), 80001); failed.consume(true, 80002);
+  assert(failed.profileReady());
+
+  // A session lost to radio errors is joined again as well.
+  Link radio; init(radio, profile()); assert(radio.startJoin(0)); completeJoin(radio, 0);
+  radio.tick(25602); assert(radio.peek(25602));
+  for (int i = 0; i < 3; ++i) radio.consume(false, 25602 + i * 200);
+  assert(std::strcmp(radio.state(), "radio transmission failed") == 0);
+  radio.tick(86001); assert(!radio.peek(86001));
+  radio.tick(86002); assert(joinRequest(radio, 86002) && radio.autoRejoins() == 1);
+
+  // A failed pairing is not turned into a join of the previous doorbell.
+  Link pairing; init(pairing, profile()); assert(pairing.startPair(0));
+  drain(pairing, 0); pairing.tick(300000); assert(!pairing.pairing());
+  pairing.tick(400000); assert(!pairing.peek(400000) && pairing.autoRejoins() == 0);
+  assert(std::strcmp(pairing.state(), "timed out") == 0);
+}
 }
 
 int main() {
@@ -338,6 +402,8 @@ int main() {
   boundedRadioRetriesAndZeroSession();
   failuresTimeoutCancelAndRollover();
   transmitFifoBounds();
+  silenceAndFailedJoinRecovery();
   std::cout << "Link tests passed: AES vector, AP pairing/join/ACK simulation, commit gating, "
-               "packet rejection, duplicates, heartbeat, disconnect, retry/timeout/cancel/rollover\n";
+               "packet rejection, duplicates, heartbeat, disconnect, retry/timeout/cancel/rollover, "
+               "silence and failed-join recovery\n";
 }

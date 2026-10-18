@@ -55,6 +55,21 @@ class Decoder {
   Packet current_;
 };
 
+// The doorbell repeats each frame several times with identical bytes, and a
+// weak link damages a few different bits in each copy. A bitwise majority of
+// three damaged copies of one length often restores the frame; only a result
+// that passes the TI CRC is returned, as a valid packet.
+class Combiner {
+ public:
+  bool offer(const Packet &damaged, uint32_t now, Packet &out);
+  // A valid frame of this length arrived: its damaged copies are not needed.
+  void drop(size_t size);
+  void reset();
+ private:
+  struct Entry { Packet packet; uint32_t at = 0; bool used = false; } entries_[6];
+  size_t next_ = 0;
+};
+
 // Retries share a sequence. Keep several events, including interleaved nodes,
 // for five minutes; unsigned subtraction handles millis() rollover.
 class Duplicates {

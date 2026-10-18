@@ -237,6 +237,14 @@ counters. The protocol has no established additional doorbell confirmation
 after that ACK. Matching duplicate responses receive another ACK without
 resetting an already established session.
 
+The doorbell sets the chime online only when this ACK arrives (`0x7d0c`,
+`net_respone_deal`, calls `device_join_net`); a lost ACK leaves the chime
+joined on its side and offline on the doorbell's. The doorbell sends its
+response in quick repeats (copies about 23 ms apart were observed) and
+retries it about every 0.4 s until the ACK arrives, so an ACK sent right after
+the first copy can be lost, and a chime that cannot decode the retries never
+answers them. The ESP32 therefore sends the ACK twice more, 300 ms apart.
+
 The custom implementation retries join requests every two seconds, at most
 ten successfully transmitted requests, with a 22-second deadline outside the
 pairing window. Radio TX failures retry after 200 ms and terminate after three
@@ -249,6 +257,24 @@ Addressed type-4 disconnect indications and encrypted type-3 opcode **`16`**
 (decimal 22) initiate rejoin while retaining the pairing key. The replacement
 uses addressed type-4 frames as a rejoin trigger; it does not implement a
 general type-4 payload decoder.
+
+### Offline detection on the doorbell
+
+The doorbell's radio keeps a state per chime in its pairing table; `2` means
+online, and the doorbell's Linux side rings and reports a chime only in that
+state. Each valid data frame from a chime that is online refreshes its
+timestamp (`0x9670`, called from the data receiver at `0x0a7a`). A check in the
+main loop (`0x998c`) sets every online chime whose last frame is 180 seconds
+or more old (`0x112a881` ticks of 10 µs) to `1`, offline. Frames from an
+offline chime no longer refresh anything: only a new join (`0x82b4`,
+`device_join_net`) sets the state back to `2`. The doorbell sends the chime
+nothing when this happens, so a chime that keeps sending heartbeats believes
+it is still joined while the doorbell no longer rings it. Addresses refer to
+the doorbell radio image (`db_full.elf`, SHA-256 `db8b06ff…2811`).
+
+The ESP32 therefore joins again by itself when a joined doorbell has not
+been heard for five minutes, and retries a failed join (no answer, or three
+failed transmissions) after one minute. A failed pairing is not retried.
 
 ## Ring data
 

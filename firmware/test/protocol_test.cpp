@@ -109,5 +109,31 @@ int main() {
     if(decoder.feedBit(random&1,noise)) assert(noise.size<=MaxMac+3);
     if(i%10000==0) { decoder.reset(); assert(feed(decoder,frame(wire),true,i%8).size()==1); }
   }
-  std::cout << "Protocol tests passed: vectors, polarity/alignment, CRC gating, recovery, duplicate rollover, noise\n";
+  // Three copies, each damaged in a different bit, vote back to the frame.
+  {
+    Packet good; good.size=body.size(); std::memcpy(good.bytes,body.data(),body.size()); good.crc=Crc::Ti8005;
+    const auto damaged=[&](size_t byte,uint8_t mask) { Packet p=good; p.bytes[byte]^=mask; p.crc=Crc::Bad; return p; };
+    Combiner combiner; Packet out;
+    assert(!combiner.offer(damaged(5,0x01),0,out));
+    assert(!combiner.offer(damaged(9,0x80),100,out));
+    assert(combiner.offer(damaged(20,0x10),200,out));
+    assert(out.crc==Crc::Ti8005 && out.size==good.size && std::memcmp(out.bytes,good.bytes,good.size)==0);
+    // Used copies are gone; the same bit damaged twice cannot be restored.
+    assert(!combiner.offer(damaged(5,0x01),300,out));
+    assert(!combiner.offer(damaged(5,0x01),400,out) && !combiner.offer(damaged(9,0x80),500,out));
+    // Copies older than three seconds, of another length, or with a valid
+    // frame in between take no part.
+    combiner.reset();
+    assert(!combiner.offer(damaged(5,0x01),0,out) && !combiner.offer(damaged(9,0x80),100,out));
+    assert(!combiner.offer(damaged(20,0x10),3101,out));
+    combiner.reset();
+    assert(!combiner.offer(damaged(5,0x01),0,out) && !combiner.offer(damaged(9,0x80),100,out));
+    combiner.drop(good.size); assert(!combiner.offer(damaged(20,0x10),200,out));
+    Packet shorter=damaged(3,0x02); shorter.size=10; shorter.bytes[0]=7;
+    combiner.reset();
+    assert(!combiner.offer(damaged(5,0x01),0,out) && !combiner.offer(shorter,50,out));
+    assert(!combiner.offer(damaged(20,0x10),100,out));
+  }
+  std::cout << "Protocol tests passed: vectors, polarity/alignment, CRC gating, recovery, duplicate rollover, noise, "
+               "majority restore\n";
 }

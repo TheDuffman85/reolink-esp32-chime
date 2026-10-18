@@ -14,6 +14,8 @@
 extern Radio radio;
 extern chime::Decoder decoder;
 extern chime::Duplicates duplicates;
+// Restores damaged doorbell frames from repeats while radioOptions.repairFrames.
+extern chime::Combiner combiner;
 extern chime::Doorbells doorbells;
 // Range extender (experimental, radioOptions.extender): frames between a paired
 // doorbell and another chime, sent again when the link has nothing to send.
@@ -21,7 +23,7 @@ extern chime::Relay extender;
 
 // Counters for the status API and serial diagnostics.
 extern uint32_t transmitted, transmitErrors, radioResets, rawBytes;
-extern uint32_t lastPacketAt, packetCount, crcTi, crcBad, crcCcitt, rings, lastRing;
+extern uint32_t lastPacketAt, packetCount, crcTi, crcBad, crcCcitt, crcCombined, rings, lastRing;
 extern uint32_t lastAppAt, appRequests;
 extern uint8_t lastAppOpcode;
 
