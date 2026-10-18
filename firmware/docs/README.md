@@ -17,6 +17,25 @@ the default packet-engine receiver does not read them; the optional ESP32
 receive mode needs both. Settings → Wiring may override GPIO assignments.
 The references are stored locally and do not represent a photograph of the completed harness. They have been retained unchanged.
 
+## Example build photos
+
+The README's Example build section shows a relay build installed over an
+existing gong. The `images/build-*.jpg` photos follow it from loose parts to
+the mounted chime:
+
+| File | View |
+|---|---|
+| `images/build-01-parts.jpg` | ESP32, CC1101, relay module and step-down converter |
+| `images/build-02-bench-test.jpg` | Modules wired together on the bench |
+| `images/build-03-enclosure-print.jpg` | Printed enclosure |
+| `images/build-04-relay-fit.jpg` | Relay module in the electronics compartment |
+| `images/build-05-assembled.jpg` | All electronics in the compartment |
+| `images/build-06-wago-connectors.jpg` | Gong leads with lever connectors |
+| `images/build-07-installation.jpg` | Connecting to the existing gong |
+| `images/build-08-installed.jpg` | Finished installation with the gong cover back on |
+
+The enclosure's STEP file and render are in [hardware/enclosure](../../hardware/enclosure).
+
 ## Current embedded UI screenshots
 
 Initial setup exposes only Setup until Finish successfully saves sound, wiring

@@ -89,7 +89,8 @@ bit-sampling mode. Follow signal labels rather than header position.
 ![ESP32 board reference](firmware/docs/images/esp32-38pin-pinout.png)
 
 The references show the component side and are not photographs of the assembled
-project. Source links are in [image documentation](firmware/docs/README.md).
+project; see [Example build](#example-build) for that. Source links are in
+[image documentation](firmware/docs/README.md).
 
 For PWM or DAC audio, connect the audio GPIO (default GPIO25) to a suitable
 external amplifier input and join the low-voltage grounds. PWM produces
@@ -102,6 +103,69 @@ gong's low-voltage pushbutton terminals. The gong circuit stays on the relay
 contact side. Some active-low optocoupler boards require removing the `JD-VCC`
 jumper, supplying the coils from 5 V and the input side from 3V3. Follow the
 module-specific circuit in [WIRING.md](firmware/WIRING.md).
+
+### Example build
+
+This build drives an existing low-voltage gong through the relay. A 3D-printed
+enclosure fits over the gong's base plate: the original gong cover sits in the
+open frame, and the electronics live in a vented compartment beside it.
+
+<table>
+  <tr>
+    <td><img src="firmware/docs/images/build-08-installed.jpg" alt="Finished chime mounted on the wall" height="320"></td>
+    <td><img src="hardware/enclosure/reolink-chime-enclosure.png" alt="Enclosure 3D model" height="320"></td>
+  </tr>
+  <tr>
+    <td>Installed, with the original gong cover back on</td>
+    <td>Enclosure model (117 × 158 × 46.5 mm)</td>
+  </tr>
+</table>
+
+| Part | Used in this build |
+|---|---|
+| ESP32 | 38-pin ESP32-WROOM-32 development board |
+| Radio | 868 MHz CC1101 module with helical spring antenna |
+| Gong output | 2-channel relay module (one channel used); COM/NO across the gong's pushbutton terminals |
+| Power | LM2596 step-down converter module |
+| Wiring | WAGO 221 lever connectors to join the gong wiring |
+| Enclosure | [reolink-chime-enclosure.step](hardware/enclosure/reolink-chime-enclosure.step), one part, printed in white |
+
+<table>
+  <tr>
+    <td><img src="firmware/docs/images/build-01-parts.jpg" alt="Parts: ESP32, CC1101, relay module, step-down converter" height="240"></td>
+    <td><img src="firmware/docs/images/build-02-bench-test.jpg" alt="Modules wired together on the bench" height="240"></td>
+  </tr>
+  <tr>
+    <td>1. Parts</td>
+    <td>2. Bench test before fitting</td>
+  </tr>
+  <tr>
+    <td><img src="firmware/docs/images/build-03-enclosure-print.jpg" alt="Printed enclosure" height="240"></td>
+    <td><img src="firmware/docs/images/build-04-relay-fit.jpg" alt="Relay module fitted in the electronics compartment" height="240"></td>
+  </tr>
+  <tr>
+    <td>3. Printed enclosure</td>
+    <td>4. Relay module in the compartment, gong wires through the divider</td>
+  </tr>
+  <tr>
+    <td><img src="firmware/docs/images/build-05-assembled.jpg" alt="Electronics packed into the compartment" height="240"></td>
+    <td><img src="firmware/docs/images/build-06-wago-connectors.jpg" alt="Gong leads with lever connectors" height="240"></td>
+  </tr>
+  <tr>
+    <td>5. Electronics packed in</td>
+    <td>6. Gong leads with lever connectors</td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="firmware/docs/images/build-07-installation.jpg" alt="Enclosure being connected to the existing gong" height="240"></td>
+  </tr>
+  <tr>
+    <td colspan="2">7. Connecting to the existing gong, before the cover goes on</td>
+  </tr>
+</table>
+
+The enclosure is sized for this particular gong and these modules. Check the
+openings against your own gong before printing; most slicers import the STEP
+file directly.
 
 ## Build and first installation
 
